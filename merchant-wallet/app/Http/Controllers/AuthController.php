@@ -9,6 +9,13 @@ use Tymon\JWTAuth\JWTGuard;
 
 class AuthController extends Controller implements HasMiddleware
 {
+    protected string $guard;
+
+    public function __construct(string $guard = 'api')
+    {
+        $this->guard = $guard;
+    }
+
     /**
      * Get the middleware that should be assigned to the controller.
      */
@@ -25,7 +32,7 @@ class AuthController extends Controller implements HasMiddleware
     protected function guard(): JWTGuard
     {
         /** @var JWTGuard */
-        return auth('api');
+        return auth($this->guard);
     }
 
     /**
