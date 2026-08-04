@@ -9,3 +9,14 @@
         'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
         'Noto Color Emoji';
 }
+
+:root {
+    --ink: #1b2430;
+    --slate: #5b6570;
+    --paper: #fafaf8;
+    --hairline: #e4e1d8;
+    --signal: #2454ff;
+    --success: #1f9d55;
+    --pending: #c98a1c;
+    --failed: #c9432c;
+}
