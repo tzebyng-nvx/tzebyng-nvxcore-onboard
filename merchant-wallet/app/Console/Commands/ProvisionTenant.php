@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Admin;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Console\Command;
@@ -55,7 +56,7 @@ class ProvisionTenant extends Command
                 'password' => Hash::make($userPassword),
             ]);
 
-            User::query()->firstOrCreate([
+            Admin::query()->firstOrCreate([
                 'email' => $adminEmail,
             ], [
                 'name' => $adminName,
