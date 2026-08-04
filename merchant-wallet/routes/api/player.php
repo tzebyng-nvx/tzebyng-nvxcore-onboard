@@ -19,12 +19,13 @@ Route::middleware([
     'auth:api',
     InitializeTenancyByRequestData::class,
 ])->group(function () {
-    Route::post('logout', fn () => app(AuthController::class, ['guard' => 'api'])->logout())
-        ->name('player.logout');
-    Route::post('refresh', fn () => app(AuthController::class, ['guard' => 'api'])->refresh())
-        ->name('player.refresh');
-    Route::post('me', fn () => app(AuthController::class, ['guard' => 'api'])->me())
-        ->name('player.me');
+    Route::controller(AuthController::class)
+        ->middleware('api')
+        ->group(function () {
+            Route::post('logout', 'logout')->name('player.logout');
+            Route::post('refresh', 'refresh')->name('player.refresh');
+            Route::post('me', 'me')->name('player.me');
+        });
 
     Route::get('/tenant-context', fn () => response()->json([
         'tenant_id' => tenant('id'),
