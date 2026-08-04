@@ -11,7 +11,7 @@
 - [x] Central and tenant migrations are fully separated into clear paths.
   - Justification: central migrations are limited to tenant metadata tables, while tenant-specific schema lives under `database/migrations/tenant` and is executed through `php artisan tenants:migrate`.
 
-- [x] An Artisan command or seeder provisions a tenant, its domain, an initial user, and an initial admin.
+- [ ] An Artisan command or seeder provisions a tenant, its domain, an initial user, and an initial admin.
 
 - [x] Two tenants are demonstrated to be data-isolated, with an automated test proving Tenant A cannot access Tenant B data.
   - Justification: the test creates two unique tenant databases and asserts each database only returns its own wallet data.
