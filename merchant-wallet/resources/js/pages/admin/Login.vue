@@ -21,7 +21,7 @@ async function submit() {
   authError.value = null;
 
   try {
-    const response = await fetch("api/login", {
+    const response = await fetch("/api/admin/login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -42,103 +42,69 @@ async function submit() {
 
     const data: LoginResponse = await response.json();
 
-    // Store token + when it expires (absolute timestamp, easier to check later).
+    // Separate storage keys from the player login, so an admin and a
+    // player session can't accidentally clobber each other in the
+    // same browser.
     const expiresAt = Date.now() + data.expires_in * 1000;
-    localStorage.setItem("access_token", data.access_token);
-    localStorage.setItem("token_type", data.token_type);
-    localStorage.setItem("expires_at", String(expiresAt));
+    localStorage.setItem("admin_access_token", data.access_token);
+    localStorage.setItem("admin_token_type", data.token_type);
+    localStorage.setItem("admin_expires_at", String(expiresAt));
 
-    router.visit("dashboard");
+    router.visit("/admin/dashboard");
   } catch (e) {
-    authError.value = e.message;
+    authError.value = e instanceof Error ? e.message : "Something went wrong. Please try again.";
   } finally {
     submitting.value = false;
     form.password = "";
   }
 }
-
-// Purely decorative — fake rows for the ledger tape signature element.
-const tape = [
-  { ref: "TXN-88213", amount: "+240.00", status: "success" },
-  { ref: "TXN-88214", amount: "-75.50", status: "pending" },
-  { ref: "TXN-88215", amount: "+1,200.00", status: "success" },
-  { ref: "TXN-88216", amount: "-320.00", status: "success" },
-  { ref: "TXN-88217", amount: "+58.20", status: "pending" },
-  { ref: "TXN-88218", amount: "-14.99", status: "failed" },
-  { ref: "TXN-88219", amount: "+900.00", status: "success" },
-  { ref: "TXN-88220", amount: "-450.00", status: "success" },
-];
 </script>
 
 <template>
-  <Head title="Log in">
+
+  <Head title="Admin Log in">
     <link rel="preconnect" href="https://rsms.me/" />
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/jetbrains-mono/2.304/jetbrains-mono.min.css"
-    />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jetbrains-mono/2.304/jetbrains-mono.min.css" />
   </Head>
 
   <div class="shell">
-    <!-- Left: ledger tape signature panel -->
-    <aside class="tape-panel" aria-hidden="true">
-      <div class="tape-header">
-        <span class="eyebrow">Live ledger</span>
+    <!-- Left: restricted-access panel, replaces the ledger tape from player login -->
+    <aside class="info-panel" aria-hidden="true">
+      <div class="info-header">
+        <span class="eyebrow">Admin access</span>
       </div>
-      <div class="tape-viewport">
-        <div class="tape-track">
-          <div v-for="(row, i) in [...tape, ...tape]" :key="i" class="tape-row">
-            <span class="tape-ref">{{ row.ref }}</span>
-            <span
-              class="tape-amount"
-              :class="row.amount.startsWith('+') ? 'is-credit' : 'is-debit'"
-              >{{ row.amount }}</span
-            >
-            <span class="tape-dot" :class="`is-${row.status}`" />
-          </div>
-        </div>
+      <div class="info-body">
+        <p class="info-heading">Tenant administration</p>
+        <p class="info-copy">
+          Review transactions, manage users, and approve withdrawals for this
+          tenant. Every action here is logged and tied to your account.
+        </p>
       </div>
-      <p class="tape-caption">Every balance change, backed by an entry.</p>
+      <p class="info-caption">Restricted area · staff only</p>
     </aside>
 
     <!-- Right: actual login form -->
     <main class="form-panel">
       <div class="form-card">
         <div class="brand">
-          <span class="brand-mark">◆</span>
-          <span class="brand-name">Ledger</span>
+          <span class="brand-mark">▲</span>
+          <span class="brand-name">Ledger · Admin</span>
         </div>
 
-        <h1>Log in</h1>
-        <p class="subtitle">Access your wallet and transaction history.</p>
+        <h1>Admin log in</h1>
+        <p class="subtitle">Sign in with your administrator account.</p>
 
         <form @submit.prevent="submit" novalidate>
           <div class="field">
             <label for="email">Email</label>
-            <input
-              id="email"
-              v-model="form.email"
-              type="email"
-              autocomplete="username"
-              autofocus
-              required
-            />
+            <input id="email" v-model="form.email" type="email" autocomplete="username" autofocus required />
             <p v-if="form.errors.email" class="error">{{ form.errors.email }}</p>
           </div>
 
           <div class="field">
-            <div class="field-row">
-              <label for="password">Password</label>
-              <a href="#" class="link-muted">Forgot password?</a>
-            </div>
-            <input
-              id="password"
-              v-model="form.password"
-              type="password"
-              autocomplete="current-password"
-              required
-            />
+            <label for="password">Password</label>
+            <input id="password" v-model="form.password" type="password" autocomplete="current-password" required />
             <p v-if="form.errors.password" class="error">{{ form.errors.password }}</p>
           </div>
 
@@ -149,7 +115,7 @@ const tape = [
           </button>
         </form>
 
-        <p class="footnote">No account? <a href="#" class="link-accent">Create one</a></p>
+        <p class="footnote">Not an admin? <a href="/login" class="link-accent">Go to player login</a></p>
       </div>
     </main>
   </div>
@@ -165,7 +131,7 @@ const tape = [
   --slate: #5b6570;
   --paper: #fafaf8;
   --hairline: #e4e1d8;
-  --signal: #2454ff;
+  --signal: #b5651d;
   --success: #1f9d55;
   --pending: #c98a1c;
   --failed: #c9432c;
@@ -179,9 +145,9 @@ const tape = [
   color: var(--ink);
 }
 
-/* ---------- Ledger tape panel ---------- */
-.tape-panel {
-  background: var(--ink);
+/* ---------- Restricted-access info panel ---------- */
+.info-panel {
+  background: #0f1115;
   color: var(--paper);
   display: flex;
   flex-direction: column;
@@ -190,7 +156,7 @@ const tape = [
   overflow: hidden;
 }
 
-.tape-header {
+.info-header {
   margin-bottom: 24px;
 }
 
@@ -199,84 +165,38 @@ const tape = [
   font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba(250, 250, 248, 0.55);
-}
-
-.tape-viewport {
-  flex: 1;
-  overflow: hidden;
-  mask-image: linear-gradient(
-    to bottom,
-    transparent 0%,
-    black 12%,
-    black 88%,
-    transparent 100%
-  );
-}
-
-.tape-track {
-  display: flex;
-  flex-direction: column;
-  animation: scrollTape 18s linear infinite;
-}
-
-@keyframes scrollTape {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(-50%);
-  }
-}
-
-.tape-row {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  align-items: center;
-  gap: 16px;
-  padding: 14px 0;
-  border-bottom: 1px solid rgba(250, 250, 248, 0.08);
-  font-family: "JetBrains Mono", monospace;
-  font-size: 13px;
-}
-
-.tape-ref {
   color: rgba(250, 250, 248, 0.5);
 }
 
-.tape-amount.is-credit {
-  color: #7fd99a;
-}
-.tape-amount.is-debit {
-  color: rgba(250, 250, 248, 0.75);
-}
-
-.tape-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  justify-self: end;
-}
-.tape-dot.is-success {
-  background: var(--success);
-}
-.tape-dot.is-pending {
-  background: var(--pending);
-}
-.tape-dot.is-failed {
-  background: var(--failed);
+.info-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  max-width: 340px;
 }
 
-.tape-caption {
-  font-size: 13px;
-  color: rgba(250, 250, 248, 0.45);
+.info-heading {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0 0 14px;
+}
+
+.info-copy {
+  font-size: 14px;
+  line-height: 1.6;
+  color: rgba(250, 250, 248, 0.6);
+  margin: 0;
+}
+
+.info-caption {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(181, 101, 29, 0.85);
   margin-top: 20px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .tape-track {
-    animation: none;
-  }
 }
 
 /* ---------- Form panel ---------- */
@@ -329,12 +249,6 @@ h1 {
   margin-bottom: 20px;
 }
 
-.field-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-}
-
 label {
   display: block;
   font-size: 13px;
@@ -372,20 +286,6 @@ input[type="password"]:focus {
   margin: 0 0 16px;
 }
 
-.checkbox-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--slate);
-  margin-bottom: 24px;
-  cursor: pointer;
-}
-
-.checkbox-row input {
-  accent-color: var(--signal);
-}
-
 .submit-btn {
   width: 100%;
   padding: 12px;
@@ -400,7 +300,7 @@ input[type="password"]:focus {
 }
 
 .submit-btn:hover:not(:disabled) {
-  background: #1c40cc;
+  background: #96521a;
 }
 
 .submit-btn:focus-visible {
@@ -413,20 +313,12 @@ input[type="password"]:focus {
   cursor: default;
 }
 
-.link-muted {
-  font-size: 12px;
-  color: var(--slate);
-  text-decoration: none;
-}
-.link-muted:hover {
-  text-decoration: underline;
-}
-
 .link-accent {
   color: var(--signal);
   text-decoration: none;
   font-weight: 500;
 }
+
 .link-accent:hover {
   text-decoration: underline;
 }
@@ -443,9 +335,11 @@ input[type="password"]:focus {
   .shell {
     grid-template-columns: 1fr;
   }
-  .tape-panel {
+
+  .info-panel {
     display: none;
   }
+
   .form-panel {
     padding: 24px;
   }

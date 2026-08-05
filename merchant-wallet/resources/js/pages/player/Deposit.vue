@@ -2,60 +2,62 @@
 import { Head, router } from "@inertiajs/vue3";
 import { computed, reactive, ref } from "vue";
 
-// Gateway's documented min/max per currency — mirror whatever the
-// gateway's docs actually state. Keep this in one place so it's easy
-// to update if the sandbox limits change.
-const CURRENCY_LIMITS: Record<string, { min: number; max: number }> = {
-  MYR: { min: 10, max: 30000 },
-  USD: { min: 5, max: 5000 },
-  SGD: { min: 5, max: 8000 },
-};
+interface Bank {
+  currency: string;
+  bank_name: string;
+  id: string;
+}
 
-const BANKS_BY_CURRENCY: Record<string, { code: string; label: string }[]> = {
-  MYR: [
-    { code: "maybank2u", label: "Maybank2u" },
-    { code: "cimb_clicks", label: "CIMB Clicks" },
-    { code: "public_bank", label: "Public Bank" },
-  ],
-  USD: [{ code: "generic_us", label: "US Bank Transfer" }],
-  SGD: [
-    { code: "dbs", label: "DBS/POSB" },
-    { code: "ocbc", label: "OCBC" },
-  ],
-};
+interface CurrencyRate {
+  currency: string;
+  min: number;
+  max: number;
+}
 
-const currencies = Object.keys(CURRENCY_LIMITS);
+const banks = ref<Bank[]>([]);
+const currencies = ref<CurrencyRate[]>([]);
+
+const limits = reactive({
+  min: 0,
+  max: 0,
+});
 
 const form = reactive({
+  currency: "",
   amount: "",
-  currency: "MYR",
-  bank: BANKS_BY_CURRENCY["MYR"][0].code,
+  bank: "",
 });
 
 const submitting = ref(false);
 const submitError = ref<string | null>(null);
 
-const limits = computed(() => CURRENCY_LIMITS[form.currency]);
-const banks = computed(() => BANKS_BY_CURRENCY[form.currency] ?? []);
-
-// Reset bank selection whenever currency changes, so it never points
-// at a bank that doesn't belong to the newly selected currency.
-function onCurrencyChange() {
-  form.bank = banks.value[0]?.code ?? "";
-}
+const filteredBanks = computed(() => {
+  return banks.value.filter(
+    bank => bank.currency === form.currency
+  );
+});
 
 const amountError = computed(() => {
   if (form.amount === "") return null;
 
   const value = Number(form.amount);
-  if (Number.isNaN(value)) return "Enter a valid number.";
-  if (value <= 0) return "Amount must be greater than zero.";
-  if (value < limits.value.min) {
-    return `Minimum deposit is ${form.currency} ${limits.value.min.toFixed(2)}.`;
+
+  if (Number.isNaN(value)) {
+    return "Enter a valid number.";
   }
-  if (value > limits.value.max) {
-    return `Maximum deposit is ${form.currency} ${limits.value.max.toFixed(2)}.`;
+
+  if (value <= 0) {
+    return "Amount must be greater than zero.";
   }
+
+  if (value < limits.min) {
+    return `Minimum deposit is ${form.currency} ${limits.min.toFixed(2)}.`;
+  }
+
+  if (value > limits.max) {
+    return `Maximum deposit is ${form.currency} ${limits.max.toFixed(2)}.`;
+  }
+
   return null;
 });
 
@@ -77,6 +79,23 @@ function authHeaders(): HeadersInit {
     Authorization: `${tokenType} ${token}`,
     "X-Tenant": window.location.hostname.split(".")[0],
   };
+}
+
+function onCurrencyChange() {
+  const selectedCurrency = currencies.value.find(
+    currency => currency.currency === form.currency
+  );
+
+  if (selectedCurrency) {
+    limits.min = selectedCurrency.min;
+    limits.max = selectedCurrency.max;
+  }
+
+  const availableBank = banks.value.find(
+    bank => bank.currency === form.currency
+  );
+
+  form.bank = availableBank?.id ?? "";
 }
 
 async function submit() {
@@ -122,9 +141,53 @@ async function submit() {
     submitting.value = false;
   }
 }
+
+async function loadData() {
+  try {
+    const response = await fetch("/api/payment/general-info", {
+      headers: authHeaders(),
+    });
+
+    const data = await response.json();
+
+    currencies.value = data.currencies;
+    banks.value = data.banks;
+
+    if (currencies.value.length > 0) {
+      form.currency = currencies.value[0].currency;
+      updateLimits();
+    }
+
+    form.bank = filteredBanks.value[0]?.id ?? "";
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+function updateLimits() {
+  const selected = currencies.value.find(
+    currency => currency.currency === form.currency
+  );
+
+  if (!selected) {
+    limits.min = 0;
+    limits.max = 0;
+    return;
+  }
+
+  limits.min = selected.min;
+  limits.max = selected.max;
+}
+
+import { onMounted } from "vue";
+
+onMounted(() => {
+  loadData();
+});
 </script>
 
 <template>
+
   <Head title="Deposit" />
 
   <div class="page">
@@ -141,8 +204,17 @@ async function submit() {
           <div class="field">
             <label for="currency">Currency</label>
             <select id="currency" v-model="form.currency" @change="onCurrencyChange">
-              <option v-for="code in currencies" :key="code" :value="code">
-                {{ code }}
+              <option v-for="currency in currencies" :key="currency.currency" :value="currency.currency">
+                {{ currency.currency }}
+              </option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="bank">Bank</label>
+            <select id="bank" v-model="form.bank">
+              <option v-for="bank in filteredBanks" :key="bank.id" :value="bank.id">
+                {{ bank.bank_name }}
               </option>
             </select>
           </div>
@@ -151,15 +223,8 @@ async function submit() {
             <label for="amount">Amount</label>
             <div class="amount-input">
               <span class="currency-prefix">{{ form.currency }}</span>
-              <input
-                id="amount"
-                v-model="form.amount"
-                type="number"
-                inputmode="decimal"
-                step="0.01"
-                placeholder="0.00"
-                autocomplete="off"
-              />
+              <input id="amount" v-model="form.amount" type="number" inputmode="decimal" step="0.01" placeholder="0.00"
+                autocomplete="off" />
             </div>
             <p class="hint">
               Min {{ limits.min.toFixed(2) }} · Max {{ limits.max.toFixed(2) }}
@@ -167,14 +232,7 @@ async function submit() {
             <p v-if="amountError" class="error">{{ amountError }}</p>
           </div>
 
-          <div class="field">
-            <label for="bank">Bank</label>
-            <select id="bank" v-model="form.bank">
-              <option v-for="bank in banks" :key="bank.code" :value="bank.code">
-                {{ bank.label }}
-              </option>
-            </select>
-          </div>
+
 
           <p v-if="submitError" class="error submit-error">{{ submitError }}</p>
 
