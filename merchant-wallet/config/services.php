@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'third_party_api' => [
+        'payment' => [
+            'base_url' => env('THIRD_PARTY_API_BASE_URL'),
+            'api_key' => env('THIRD_PARTY_API_KEY'),
+        ],
+    ],
+
 ];
