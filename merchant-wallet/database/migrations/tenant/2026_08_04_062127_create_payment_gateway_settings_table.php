@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('secret_key');
             $table->string('base_url');
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 
