@@ -4,63 +4,55 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StorePaymentGatewaySettingsRequest;
 use App\Http\Requests\UpdatePaymentGatewaySettingsRequest;
-use App\Models\PaymentGatewaySettings;
+use App\Services\PaymentGatewaySettingsService;
+use Exception;
 
 class PaymentGatewaySettingsController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    protected PaymentGatewaySettingsService $paymentGatewaySettingsService;
+
+    public function __construct(PaymentGatewaySettingsService $paymentGatewaySettingsService)
     {
-        //
+        $this->paymentGatewaySettingsService = $paymentGatewaySettingsService;
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function show()
     {
-        //
+        try {
+            return response()->json(
+                $this->paymentGatewaySettingsService->getSettings()
+            );
+        } catch (Exception $e) {
+            return response()->json([
+                'error' => 'Failed to retrieve payment gateway settings',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(StorePaymentGatewaySettingsRequest $request)
-    {
-        //
-    }
+    // public function store(StorePaymentGatewaySettingsRequest $request)
+    // {
+    //     try {
+    //         $setting = $this->paymentGatewaySettingsService->createSettings($request->validated());
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(PaymentGatewaySettings $paymentGatewaySettings)
-    {
-        //
-    }
+    //         return response()->json($setting, 201);
+    //     } catch (Exception $e) {
+    //         return response()->json(['error' => 'Failed to store payment gateway settings', 'message' => $e->getMessage()], 500);
+    //     }
+    // }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(PaymentGatewaySettings $paymentGatewaySettings)
+    public function update(UpdatePaymentGatewaySettingsRequest $request)
     {
-        //
-    }
+        try {
+            $setting = $this->paymentGatewaySettingsService
+                ->saveSettings($request->validated());
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(UpdatePaymentGatewaySettingsRequest $request, PaymentGatewaySettings $paymentGatewaySettings)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(PaymentGatewaySettings $paymentGatewaySettings)
-    {
-        //
+            return response()->json($setting);
+        } catch (Exception $e) {
+            return response()->json([
+                'error' => 'Failed to update payment gateway settings',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
     }
 }
