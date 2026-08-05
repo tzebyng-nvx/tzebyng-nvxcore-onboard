@@ -1,4 +1,6 @@
 import { createInertiaApp, router } from '@inertiajs/vue3';
+import { DefineComponent } from 'vue';
+import { resolvePageComponent } from "laravel-vite-plugin/inertia-helpers"
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -22,6 +24,11 @@ router.on('before', (event) => {
 });
 
 createInertiaApp({
+    resolve: (name: string) =>
+        resolvePageComponent(
+            `./pages/${name.replace('.', '/')}.vue`,
+            import.meta.glob("./pages/**/*.vue")
+        ) as Promise<DefineComponent>,
     title: (title) => (title ? `${title} - ${appName}` : appName),
     progress: {
         color: '#4B5563',
