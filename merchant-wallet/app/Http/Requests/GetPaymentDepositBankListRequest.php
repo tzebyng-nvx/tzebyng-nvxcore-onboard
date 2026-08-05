@@ -5,7 +5,7 @@ namespace App\Http\Requests;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
-class StorePaymentGatewaySettingsRequest extends FormRequest
+class GetPaymentDepositBankListRequest extends FormRequest
 {
     /**
      * Get the validation rules that apply to the request.
@@ -15,10 +15,7 @@ class StorePaymentGatewaySettingsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'merchant_username' => ['required', 'string', 'max:255'],
-            'api_key' => ['required', 'string', 'max:255'],
-            'secret_key' => ['required', 'string', 'max:255'],
-            'base_url' => ['required', 'url', 'max:255'],
+            'currency' => ['sometimes', 'string', 'max:255'],
         ];
     }
 }

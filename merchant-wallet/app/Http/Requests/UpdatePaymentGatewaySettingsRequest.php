@@ -8,14 +8,6 @@ use Illuminate\Foundation\Http\FormRequest;
 class UpdatePaymentGatewaySettingsRequest extends FormRequest
 {
     /**
-     * Determine if the user is authorized to make this request.
-     */
-    public function authorize(): bool
-    {
-        return false;
-    }
-
-    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
@@ -23,7 +15,10 @@ class UpdatePaymentGatewaySettingsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'merchant_username' => ['sometimes', 'string', 'max:255'],
+            'api_key' => ['sometimes', 'string', 'max:255'],
+            'secret_key' => ['sometimes', 'string', 'max:255'],
+            'base_url' => ['sometimes', 'url', 'max:255'],
         ];
     }
 }
