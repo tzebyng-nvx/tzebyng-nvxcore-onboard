@@ -2,11 +2,11 @@
 
 namespace Database\Factories;
 
-use App\Models\PaymentGatewaySettings;
+use App\Models\PaymentGatewaySetting;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory<PaymentGatewaySettings>
+ * @extends Factory<PaymentGatewaySetting>
  */
 class PaymentGatewaySettingsFactory extends Factory
 {
