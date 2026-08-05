@@ -4,8 +4,10 @@ namespace App\Models;
 
 use Carbon\Carbon;
 use Database\Factories\PaymentGatewaySettingsFactory;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * @property string $id
@@ -15,11 +17,12 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $base_url
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
  */
-class PaymentGatewaySettings extends Model
+class PaymentGatewaySetting extends Model
 {
     /** @use HasFactory<PaymentGatewaySettingsFactory> */
-    use HasFactory;
+    use HasFactory, HasUuids, SoftDeletes;
 
     public $incrementing = false;
 
@@ -35,5 +38,6 @@ class PaymentGatewaySettings extends Model
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
     ];
 }
