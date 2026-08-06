@@ -10,23 +10,18 @@ use Illuminate\Support\Facades\Hash;
 
 class ProvisionTenant extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'tenant:provision {tenant_id} {domain} {--user-name=Tenant User} {--user-email=} {--user-password=password} {--admin-name=Tenant Admin} {--admin-email=} {--admin-password=password}';
+    protected $signature = 'tenant:provision 
+        {tenant_id} 
+        {domain} 
+        {--user-name=Tenant User} 
+        {--user-email=} 
+        {--user-password=password} 
+        {--admin-name=Tenant Admin} 
+        {--admin-email=} 
+        {--admin-password=password}';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
     protected $description = 'Create a tenant, map a domain, and provision initial tenant users/admins in the tenant database.';
 
-    /**
-     * Execute the console command.
-     */
     public function handle(): int
     {
         $tenantId = (string) $this->argument('tenant_id');
@@ -48,7 +43,14 @@ class ProvisionTenant extends Command
         $adminEmail = $this->option('admin-email') ?: $this->defaultEmail($tenantId, 'admin');
         $adminPassword = $this->option('admin-password');
 
-        $tenant->run(function () use ($userName, $userEmail, $userPassword, $adminName, $adminEmail, $adminPassword) {
+        $tenant->run(function () use (
+            $userName,
+            $userEmail,
+            $userPassword,
+            $adminName,
+            $adminEmail,
+            $adminPassword
+        ) {
             User::query()->firstOrCreate([
                 'email' => $userEmail,
             ], [
@@ -65,6 +67,7 @@ class ProvisionTenant extends Command
         });
 
         $this->info("Tenant [$tenantId] provisioned for [$domain].");
+
         $this->table([
             'Type',
             'Name',
