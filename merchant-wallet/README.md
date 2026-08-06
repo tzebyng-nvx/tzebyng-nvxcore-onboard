@@ -1,5 +1,21 @@
 # tzebyng-nvxcore-onboard
 
+## Create Model File
+
+```bash
+php artisan make:model ModelName
+
+// if you need migration, factory, seeder, controller, form request at the same time
+// remove policy file after the file generation, spatie/laravel-permission handles this
+php artisan make:model ModelName -a
+```
+
+## Create Service File
+
+```bash
+php artisan make:class Services/UserService
+```
+
 ## Provision a tenant with an initial user and admin
 
 ```bash
@@ -51,4 +67,10 @@ php artisan migrate
 
 ```bash
 php artisan test
+```
+
+## Forwarding Port
+
+```bash
+ngrok http --url=verbose-exhaust-angriness.ngrok-free.dev https://merchant-wallet.test:443 --host-header=merchant-wallet.test
 ```
