@@ -6,6 +6,6 @@ readonly class PaymentGatewayGeneralInfoDto
 {
     public function __construct(
         public array $currencies,
-        public array $banks,
+        public ?array $banks,
     ) {}
 }

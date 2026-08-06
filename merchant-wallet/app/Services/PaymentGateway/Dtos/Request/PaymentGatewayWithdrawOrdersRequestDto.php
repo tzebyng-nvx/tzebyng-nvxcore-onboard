@@ -21,7 +21,7 @@ readonly class PaymentGatewayWithdrawOrdersRequestDto
             'auth' => $this->auth,
             'amount' => $this->amount,
             'currency' => $this->currency,
-            'order_id' => $this->order_id,
+            'orderid' => $this->order_id,
             'bank_id' => $this->bank_id,
             'holder_name' => $this->holder_name,
             'account_no' => $this->account_no,
