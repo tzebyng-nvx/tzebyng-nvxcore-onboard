@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\WalletController;
 use Illuminate\Support\Facades\Route;
 use Stancl\Tenancy\Middleware\InitializeTenancyByRequestData;
 
@@ -29,9 +31,25 @@ Route::middleware([
 
     Route::prefix('payment')->controller(PaymentController::class)
         ->group(function () {
+
+            // Info Retrieval
             Route::get('general-info', 'getGeneralInfo')->name('player.general-info');
             Route::get('currency', 'getCurrency')->name('player.currency');
             Route::get('deposit-bank-list', 'getDepositBankList')->name('player.deposit-bank-list');
+
+            // Actions
+            Route::post('deposit', 'deposit')->name('player.deposit');
+            Route::post('withdraw', 'withdraw')->name('player.withdraw');
+        });
+
+    Route::prefix('transactions')->controller(TransactionController::class)
+        ->group(function () {
+            Route::get('/', 'index')->name('player.transaction.index');
+        });
+
+    Route::prefix('wallet')->controller(WalletController::class)
+        ->group(function () {
+            Route::get('/', 'index')->name('player.wallet.index');
         });
 
     Route::get('/tenant-context', fn () => response()->json([

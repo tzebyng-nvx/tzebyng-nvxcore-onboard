@@ -21,6 +21,8 @@ Route::middleware([
         'login' => ['component' => 'player/Login',     'title' => 'Tenant Login',     'name' => 'login'],
         'dashboard' => ['component' => 'player.Dashboard', 'title' => 'Tenant Dashboard', 'name' => 'dashboard'],
         'deposit' => ['component' => 'player.Deposit',   'title' => 'Tenant Deposit',   'name' => 'deposit'],
+        'withdraw' => ['component' => 'player.Withdraw',   'title' => 'Tenant Withdraw',   'name' => 'withdraw'],
+        'transaction' => ['component' => 'player.Transaction',   'title' => 'Tenant Transaction',   'name' => 'transaction'],
     ];
 
     foreach ($playerPages as $uri => $page) {
