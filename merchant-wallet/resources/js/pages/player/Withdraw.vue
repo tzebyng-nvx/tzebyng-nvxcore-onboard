@@ -16,8 +16,6 @@ interface CurrencyRate {
 
 const banks = ref<Bank[]>([]);
 const currencies = ref<CurrencyRate[]>([]);
-const loadError = ref<string | null>(null);
-const loading = ref(true);
 
 const limits = reactive({
   min: 0,
@@ -27,8 +25,9 @@ const limits = reactive({
 const form = reactive({
   currency: "",
   amount: "",
-  bank: "",
-  payment_method: "online_banking",
+  bank_id: "",
+  holder_name: "",
+  account_no: "",
 });
 
 const submitting = ref(false);
@@ -54,11 +53,11 @@ const amountError = computed(() => {
   }
 
   if (value < limits.min) {
-    return `Minimum deposit is ${form.currency} ${limits.min.toFixed(2)}.`;
+    return `Minimum withdrawal is ${form.currency} ${limits.min.toFixed(2)}.`;
   }
 
   if (value > limits.max) {
-    return `Maximum deposit is ${form.currency} ${limits.max.toFixed(2)}.`;
+    return `Maximum withdrawal is ${form.currency} ${limits.max.toFixed(2)}.`;
   }
 
   return null;
@@ -68,16 +67,17 @@ const isValid = computed(() => {
   return (
     form.amount !== "" &&
     amountError.value === null &&
-    (
-      form.payment_method === "duitnowqr" ||
-      form.bank !== ""
-    )
+    form.currency !== "" &&
+    form.bank_id !== "" &&
+    form.holder_name.trim() !== "" &&
+    form.account_no.trim() !== ""
   );
 });
 
 function authHeaders(): HeadersInit {
   const token = localStorage.getItem("access_token");
   const tokenType = localStorage.getItem("token_type") ?? "Bearer";
+
   return {
     "Content-Type": "application/json",
     Accept: "application/json",
@@ -96,20 +96,7 @@ function onCurrencyChange() {
     limits.max = selectedCurrency.max;
   }
 
-  const availableBank = banks.value.find(
-    bank => bank.currency === form.currency
-  );
-
-  form.bank = availableBank?.id ?? "";
-}
-
-function onPaymentMethodChange() {
-  if (form.payment_method === "duitnowqr") {
-    form.bank = "";
-    return;
-  }
-
-  form.bank = filteredBanks.value[0]?.id ?? "";
+  form.bank_id = filteredBanks.value[0]?.id ?? "";
 }
 
 async function submit() {
@@ -119,14 +106,15 @@ async function submit() {
   submitError.value = null;
 
   try {
-    const response = await fetch("/api/payment/deposit", {
+    const response = await fetch("/api/payment/withdraw", {
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify({
         amount: Number(form.amount),
         currency: form.currency,
-        bank_id: form.bank || null,
-        payment_method: form.payment_method,
+        bank_id: form.bank_id,
+        holder_name: form.holder_name,
+        account_no: form.account_no,
       }),
     });
 
@@ -137,23 +125,43 @@ async function submit() {
 
     if (!response.ok) {
       const body = await response.json().catch(() => null);
+
       submitError.value =
-        body?.message ?? "Could not start this deposit. Please try again.";
+        body?.message ??
+        "Could not process withdrawal. Please try again.";
+
       return;
     }
 
-    // Backend creates the pending transaction, calls the gateway,
-    // and returns the payment URL to redirect the user to.
-    const data = await response.json();
-    if (data.p_url) {
-      window.location.href = data.p_url;
-    } else {
-      router.visit("/dashboard");
-    }
+    router.visit("/dashboard");
+
   } catch (e) {
     submitError.value = "Something went wrong. Please try again.";
   } finally {
     submitting.value = false;
+  }
+}
+
+async function loadData() {
+  try {
+    const response = await fetch("/api/payment/general-info?withdraw=1", {
+      headers: authHeaders(),
+    });
+
+    const data = await response.json();
+
+    currencies.value = data.currencies;
+    banks.value = data.banks;
+
+    if (currencies.value.length > 0) {
+      form.currency = currencies.value[0].currency;
+      updateLimits();
+    }
+
+    form.bank_id = filteredBanks.value[0]?.id ?? "";
+
+  } catch (error) {
+    console.error(error);
   }
 }
 
@@ -172,50 +180,6 @@ function updateLimits() {
   limits.max = selected.max;
 }
 
-async function loadData() {
-  loading.value = true;
-  loadError.value = null;
-
-  try {
-    const response = await fetch("/api/payment/general-info?deposit=1", {
-      headers: authHeaders(),
-    });
-
-    if (response.status === 401) {
-      router.visit("/login");
-      return;
-    }
-
-    if (!response.ok) {
-      // Don't touch currencies/banks — leave them as empty arrays so
-      // every downstream .filter()/.length call still has something
-      // safe to operate on instead of throwing.
-      const body = await response.json().catch(() => null);
-      loadError.value =
-        body?.message ?? "Could not load deposit options. Please try again.";
-      return;
-    }
-
-    const data = await response.json();
-
-    currencies.value = data.currencies ?? [];
-    banks.value = data.banks ?? [];
-
-    if (currencies.value.length > 0) {
-      form.currency = currencies.value[0].currency;
-      updateLimits();
-    }
-
-    if (form.payment_method === "online_banking") {
-      form.bank = filteredBanks.value[0]?.id ?? "";
-    }
-  } catch (error) {
-    loadError.value = "Something went wrong loading deposit options.";
-  } finally {
-    loading.value = false;
-  }
-}
-
 onMounted(() => {
   loadData();
 });
@@ -223,68 +187,96 @@ onMounted(() => {
 
 <template>
 
-  <Head title="Deposit" />
+  <Head title="Withdrawal" />
 
   <div class="page">
     <header class="topbar">
-      <button class="back-btn" @click="router.visit('/dashboard')">← Dashboard</button>
+      <button class="back-btn" @click="router.visit('/dashboard')">
+        ← Dashboard
+      </button>
     </header>
 
     <main class="content">
       <div class="form-card">
-        <span class="eyebrow">New deposit</span>
-        <h1>How much are you adding?</h1>
+        <span class="eyebrow">New withdrawal</span>
 
-        <p v-if="loadError" class="error load-error">{{ loadError }}</p>
+        <h1>How much are you withdrawing?</h1>
 
-        <form v-else @submit.prevent="submit" novalidate>
+        <form @submit.prevent="submit" novalidate>
+
           <div class="field">
-            <label for="payment_method">Payment Method</label>
-            <select id="payment_method" v-model="form.payment_method" :disabled="loading"
-              @change="onPaymentMethodChange">
-              <option value="online_banking">Online Banking</option>
-              <option value="duitnowqr">DuitNow QR</option>
+            <label for="currency">Currency</label>
+
+            <select id="currency" v-model="form.currency" @change="onCurrencyChange">
+              <option v-for="currency in currencies" :key="currency.currency" :value="currency.currency">
+                {{ currency.currency }}
+              </option>
             </select>
           </div>
 
-          <div v-if="form.payment_method === 'online_banking'" class="field">
-            <div class="field">
-              <label for="currency">Currency</label>
-              <select id="currency" v-model="form.currency" :disabled="loading" @change="onCurrencyChange">
-                <option v-for="currency in currencies" :key="currency.currency" :value="currency.currency">
-                  {{ currency.currency }}
-                </option>
-              </select>
-            </div>
 
-            <div class="field">
-              <label for="bank">Bank</label>
-              <select id="bank" v-model="form.bank" :disabled="loading">
-                <option v-for="bank in filteredBanks" :key="bank.id" :value="bank.id">
-                  {{ bank.bank_name }}
-                </option>
-              </select>
-            </div>
+          <div class="field">
+            <label for="bank">Bank</label>
 
-            <div class="field">
-              <label for="amount">Amount</label>
-              <div class="amount-input">
-                <span class="currency-prefix">{{ form.currency }}</span>
-                <input id="amount" v-model="form.amount" type="number" inputmode="decimal" step="0.01"
-                  placeholder="0.00" autocomplete="off" :disabled="loading" />
-              </div>
-              <p class="hint">
-                Min {{ limits.min.toFixed(2) }} · Max {{ limits.max.toFixed(2) }}
-              </p>
-              <p v-if="amountError" class="error">{{ amountError }}</p>
-            </div>
+            <select id="bank" v-model="form.bank_id">
+              <option v-for="bank in filteredBanks" :key="bank.id" :value="bank.id">
+                {{ bank.bank_name }}
+              </option>
+            </select>
           </div>
 
-          <p v-if="submitError" class="error submit-error">{{ submitError }}</p>
 
-          <button type="submit" class="submit-btn" :disabled="!isValid || submitting || loading">
-            {{ submitting ? "Starting deposit…" : "Continue to payment" }}
+          <div class="field">
+            <label for="holder_name">
+              Account Holder Name
+            </label>
+
+            <input id="holder_name" v-model="form.holder_name" type="text" placeholder="Account holder name" />
+          </div>
+
+
+          <div class="field">
+            <label for="account_no">
+              Account Number
+            </label>
+
+            <input id="account_no" v-model="form.account_no" type="text" placeholder="Bank account number" />
+          </div>
+
+
+          <div class="field">
+            <label for="amount">
+              Amount
+            </label>
+
+            <div class="amount-input">
+              <span class="currency-prefix">
+                {{ form.currency }}
+              </span>
+
+              <input id="amount" v-model="form.amount" type="number" inputmode="decimal" step="0.01"
+                placeholder="0.00" />
+            </div>
+
+            <p class="hint">
+              Min {{ limits.min.toFixed(2) }} · Max {{ limits.max.toFixed(2) }}
+            </p>
+
+            <p v-if="amountError" class="error">
+              {{ amountError }}
+            </p>
+          </div>
+
+
+          <p v-if="submitError" class="error submit-error">
+            {{ submitError }}
+          </p>
+
+
+          <button type="submit" class="submit-btn" :disabled="!isValid || submitting">
+            {{ submitting ? "Processing withdrawal…" : "Withdraw" }}
           </button>
+
         </form>
       </div>
     </main>
@@ -373,12 +365,6 @@ input[type="number"] {
   color: var(--ink);
 }
 
-select:disabled,
-input:disabled {
-  background: var(--hairline);
-  color: var(--slate);
-}
-
 select:focus,
 input:focus {
   outline: 2px solid var(--signal);
@@ -430,11 +416,6 @@ input:focus {
   color: var(--failed);
   font-size: 12px;
   margin: 6px 0 0;
-}
-
-.load-error {
-  font-size: 14px;
-  margin: 0;
 }
 
 .submit-error {

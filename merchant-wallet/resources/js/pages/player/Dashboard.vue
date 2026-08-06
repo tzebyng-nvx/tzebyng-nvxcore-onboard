@@ -3,11 +3,11 @@ import { Head, router } from "@inertiajs/vue3";
 import { onMounted, ref } from "vue";
 
 interface Transaction {
-  id: number;
-  merchant_order_id: string;
-  type: "deposit" | "withdrawal";
+  id: string;
+  type: string;
   amount: string;
-  status: "pending" | "success" | "failed" | "cancelled";
+  currency: string;
+  status: string;
   created_at: string;
 }
 
@@ -45,9 +45,8 @@ async function logout() {
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
-        Authorization: `${localStorage.getItem("token_type") ?? "Bearer"} ${
-          localStorage.getItem("access_token") ?? ""
-        }`,
+        Authorization: `${localStorage.getItem("token_type") ?? "Bearer"} ${localStorage.getItem("access_token") ?? ""
+          }`,
         "X-Tenant": window.location.hostname.split(".")[0],
       },
     });
@@ -59,7 +58,7 @@ async function logout() {
 
       router.visit("/login");
     }
-  } catch (e) {}
+  } catch (e) { }
 }
 
 async function loadDashboard() {
@@ -72,17 +71,23 @@ async function loadDashboard() {
   loadError.value = null;
 
   try {
-    const [walletRes, txnRes] = await Promise.all([
-      fetch("/api/wallet", { headers: authHeaders() }),
-      fetch("/api/transactions?per_page=10", { headers: authHeaders() }),
-    ]);
+    const [
+      walletRes,
+      txnRes] = await Promise.all([
+        fetch("/api/wallet", { headers: authHeaders() }),
+        fetch("/api/transactions?per_page=5", { headers: authHeaders() }),
+      ]);
 
-    if (walletRes.status === 401 || txnRes.status === 401) {
+    if (
+      walletRes.status === 401 ||
+      txnRes.status === 401) {
       logout();
       return;
     }
 
-    if (!walletRes.ok || !txnRes.ok) {
+    if (
+      !walletRes.ok ||
+      !txnRes.ok) {
       loadError.value = "Could not load your wallet right now.";
       return;
     }
@@ -93,8 +98,8 @@ async function loadDashboard() {
     balance.value = wallet.balance;
     currency.value = wallet.currency;
     transactions.value = txnPage.data ?? txnPage;
-  } catch (e) {
-    loadError.value = "Something went wrong loading your dashboard.";
+  } catch (e: any) {
+    loadError.value = e.message ?? "Something went wrong loading your dashboard.";
   } finally {
     loading.value = false;
   }
@@ -116,6 +121,7 @@ onMounted(loadDashboard);
 </script>
 
 <template>
+
   <Head title="Dashboard" />
 
   <div class="page">
@@ -141,7 +147,11 @@ onMounted(loadDashboard);
             Deposit
           </button>
           <button class="action-btn" @click="router.visit('/withdraw')">Withdraw</button>
+          <button class="action-btn" @click="router.visit('/transaction')">
+            Transactions
+          </button>
         </div>
+
       </section>
 
       <section class="transactions-card">
@@ -163,7 +173,7 @@ onMounted(loadDashboard);
           </thead>
           <tbody>
             <tr v-for="txn in transactions" :key="txn.id">
-              <td class="mono">{{ txn.merchant_order_id }}</td>
+              <td class="mono">{{ txn.id }}</td>
               <td class="capitalize">{{ txn.type }}</td>
               <td class="mono" :class="txn.type === 'deposit' ? 'is-credit' : 'is-debit'">
                 {{ formatAmount(txn) }}
@@ -171,7 +181,7 @@ onMounted(loadDashboard);
               <td>
                 <span class="status-pill" :class="`is-${txn.status}`">{{
                   txn.status
-                }}</span>
+                  }}</span>
               </td>
               <td class="mono muted">{{ formatDate(txn.created_at) }}</td>
             </tr>
