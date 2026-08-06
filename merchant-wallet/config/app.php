@@ -123,4 +123,5 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'payment_callback_url' => env('PAYMENT_CALLBACK_URL'),
 ];
