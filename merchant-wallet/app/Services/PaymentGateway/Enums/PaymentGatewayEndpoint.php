@@ -17,10 +17,5 @@ enum PaymentGatewayEndpoint: string
     case CHECK_STATUS = '/merchant/check_status';
     case CHECK_STATUS_WITHDRAW = '/merchant/check_withdraw_status';
 
-    case BALANCE = 'wallet/get_balance';
-
-    // after making payment, Payment will call "callback_url" in PaymentGatewaySetting
-    // callback might need hook, and url expose
-    // handle callback response dto later
-
+    case BALANCE = '/wallet/get_balance';
 }
