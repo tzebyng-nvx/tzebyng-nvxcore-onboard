@@ -2,107 +2,97 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\GetPaymentDepositBankListRequest;
-use App\Models\Payment;
+use App\Http\Requests\GetPaymentBankListRequest;
+use App\Http\Requests\PaymentGeneralInfoRequest;
+use App\Http\Requests\TransactionCreateDepositRequest;
+use App\Http\Requests\TransactionCreateWithdrawalRequest;
 use App\Services\PaymentGateway\PaymentGatewayService;
+use App\Services\TransactionService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class PaymentController extends Controller
 {
-    public function __construct(protected PaymentGatewayService $gateway) {}
+    public function __construct(protected PaymentGatewayService $paymentGatewayService, protected TransactionService $transactionService) {}
 
-    public function getGeneralInfo(): JsonResponse
+    // INFO RETRIEVAL
+
+    public function getGeneralInfo(PaymentGeneralInfoRequest $request): JsonResponse
     {
-        $generalInfo = $this->gateway->getGeneralInfo();
+        $generalInfo = $this->paymentGatewayService->getGeneralInfo($request->validated());
 
         return response()->json($generalInfo);
     }
 
     public function getCurrency(): JsonResponse
     {
-        $currency = $this->gateway->getCurrency();
+        $currency = $this->paymentGatewayService->getCurrency();
 
         return response()->json($currency);
     }
 
-    public function getDepositBankList(GetPaymentDepositBankListRequest $request): JsonResponse
+    public function getDepositBankList(GetPaymentBankListRequest $request): JsonResponse
     {
-        $bankList = $this->gateway->getDepositBankList($request->validated());
+        $bankList = $this->paymentGatewayService->getBankList('deposit', $request->validated());
 
         return response()->json($bankList);
     }
 
-    /**
-     * GET /payments
-     * List records, paginated.
-     */
+    public function getWithdrawBankList(GetPaymentBankListRequest $request): JsonResponse
+    {
+        $bankList = $this->paymentGatewayService->getBankList('withdraw', $request->validated());
 
-    // public function index(Request $request): JsonResponse
-    // {
-    //     $perPage = min((int) $request->integer('per_page', 15), 100);
+        return response()->json($bankList);
+    }
 
-    //     $payments = Payment::query()
-    //         ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status'))
-    //         )
-    //         ->latest()
-    //         ->paginate($perPage);
+    // ACTIONS
+    public function deposit(TransactionCreateDepositRequest $request): JsonResponse
+    {
+        $user = auth('api')->user();
 
-    //     return response()->json($payments);
-    // }
+        // create records
+        $transaction = $this->transactionService->createDeposit([
+            ...$request->validated(),
+            'user_id' => $user->id,
+        ]);
 
-    /**
-     * POST /payments
-     * Create a new record.
-     */
-    // public function store(Request $request): JsonResponse
-    // {
-    //     $validated = $request->validate([
-    //         'amount' => ['required', 'numeric', 'min:0.01'],
-    //         'currency' => ['required', 'string', 'size:3'],
-    //         'status' => ['sometimes', Rule::in(['pending', 'success', 'failed'])],
-    //     ]);
+        // connect to 3rd party
+        $gatewayDepositResult = $this->paymentGatewayService->createDeposit([
+            ...$request->validated(),
+            'order_id' => $transaction->id,
+            'email' => $user->email,
+            'phone_number' => '0123445678', // TODO: add this column in all users table, hardcoded now
+        ]);
 
-    //     $payment = Payment::create($validated);
+        // update record
+        $this->transactionService->updatePaymentId([$transaction->id, $gatewayDepositResult->payment_id]);
 
-    //     return response()->json($payment, 201);
-    // }
+        return response()->json($gatewayDepositResult);
+    }
 
-    /**
-     * GET /payments/{payment}
-     * Show a single record.
-     */
-    // public function show(Payment $payment): JsonResponse
-    // {
-    //     return response()->json($payment);
-    // }
+    public function withdraw(TransactionCreateWithdrawalRequest $request): JsonResponse
+    {
+        $user = auth('api')->user();
 
-    /**
-     * PUT/PATCH /payments/{payment}
-     * Update an existing record.
-     */
-    // public function update(Request $request, Payment $payment): JsonResponse
-    // {
-    //     $validated = $request->validate([
-    //         'amount' => ['sometimes', 'numeric', 'min:0.01'],
-    //         'currency' => ['sometimes', 'string', 'size:3'],
-    //         'status' => ['sometimes', Rule::in(['pending', 'success', 'failed'])],
-    //     ]);
+        // create withdrawal transaction
+        $transaction = $this->transactionService->createWithdrawal([
+            ...$request->validated(),
+            'user_id' => $user->id,
+        ]);
 
-    //     $payment->update($validated);
+        // connect to 3rd party withdrawal gateway
+        $gatewayWithdrawalResult = $this->paymentGatewayService->createWithdrawal([
+            ...$request->validated(),
+            'order_id' => $transaction->id,
+            'holder_name' => $request->holder_name,
+            'account_no' => $request->account_no,
+        ]);
 
-    //     return response()->json($payment);
-    // }
+        // update payment id from gateway response
+        $this->transactionService->updatePaymentId([
+            $transaction->id,
+            $gatewayWithdrawalResult->payment_id,
+        ]);
 
-    /**
-     * DELETE /payments/{payment}
-     * Delete a record.
-     */
-    // public function destroy(Payment $payment): JsonResponse
-    // {
-    //     $payment->delete();
-
-    //     return response()->json(null, 204);
-    // }
+        return response()->json($gatewayWithdrawalResult);
+    }
 }
