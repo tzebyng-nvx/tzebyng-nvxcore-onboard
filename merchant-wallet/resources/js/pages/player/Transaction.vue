@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PlayerShell from "@/components/PlayerShell.vue";
 import { Head, router } from "@inertiajs/vue3";
 import { onMounted, ref } from "vue";
 
@@ -128,243 +129,361 @@ onMounted(() => {
 
     <Head title="Transactions" />
 
-    <div class="page">
-
-        <header class="topbar">
-            <button class="back-btn" @click="router.visit('/dashboard')">
-                ← Dashboard
+    <PlayerShell active="transaction" eyebrow="Wallet" title="Transactions">
+        <template #actions>
+            <button class="refresh-btn" :disabled="loading" @click="loadTransactions">
+                {{ loading ? "Refreshing…" : "↻ Refresh" }}
             </button>
-        </header>
+        </template>
 
-
-        <main class="content">
-
-            <section class="card">
-
-                <div class="card-header">
-                    <h1>Transactions</h1>
-                </div>
-
-
-                <div class="filters">
-
+        <section class="card">
+            <div class="toolbar">
+                <div class="filter-group">
+                    <span class="filter-label">Type</span>
                     <select v-model="filters.type" @change="applyFilter">
-                        <option value="">
-                            All Types
-                        </option>
-
-                        <option value="deposit">
-                            Deposit
-                        </option>
-
-                        <option value="withdrawal">
-                            Withdrawal
-                        </option>
+                        <option value="">All types</option>
+                        <option value="deposit">Deposit</option>
+                        <option value="withdrawal">Withdrawal</option>
                     </select>
-
-
-                    <select v-model="filters.status" @change="applyFilter">
-                        <option value="">
-                            All Status
-                        </option>
-
-                        <option value="pending">
-                            Pending
-                        </option>
-
-                        <option value="success">
-                            Success
-                        </option>
-
-                        <option value="failed">
-                            Failed
-                        </option>
-                    </select>
-
                 </div>
 
+                <div class="filter-group">
+                    <span class="filter-label">Status</span>
+                    <select v-model="filters.status" @change="applyFilter">
+                        <option value="">All statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="success">Success</option>
+                        <option value="failed">Failed</option>
+                    </select>
+                </div>
 
-                <p v-if="loadError" class="error">
-                    {{ loadError }}
-                </p>
+                <span v-if="pagination" class="result-count muted">
+                    {{ pagination.total }} result{{ pagination.total === 1 ? '' : 's' }}
+                </span>
+            </div>
 
+            <p v-if="loadError" class="error">{{ loadError }}</p>
 
-                <table v-else-if="!loading && transactions.length" class="txn-table">
-
+            <div v-else-if="!loading && transactions.length" class="table-wrap">
+                <table class="txn-table">
                     <thead>
                         <tr>
                             <th>Reference</th>
                             <th>Type</th>
-                            <th>Amount</th>
+                            <th class="right">Amount</th>
                             <th>Payment</th>
                             <th>Status</th>
-                            <th>Date</th>
+                            <th class="right">Date</th>
                         </tr>
                     </thead>
-
-
                     <tbody>
-
                         <tr v-for="txn in transactions" :key="txn.id">
-
-                            <td class="mono">
-                                {{ txn.id }}
-                            </td>
-
-
-                            <td class="capitalize">
-                                {{ txn.type }}
-                            </td>
-
-
-                            <td class="mono">
-                                {{ formatAmount(txn) }}
-                            </td>
-
-
+                            <td class="mono muted ref-cell">{{ txn.id }}</td>
                             <td>
-                                {{ txn.payment_method ?? '-' }}
-                            </td>
-
-
-                            <td>
-                                <span class="status-pill" :class="`is-${txn.status}`">
-                                    {{ txn.status }}
+                                <span class="type-chip" :class="txn.type === 'deposit' ? 'is-credit' : 'is-debit'">
+                                    {{ txn.type }}
                                 </span>
                             </td>
-
-
-                            <td class="mono muted">
-                                {{ formatDate(txn.created_at) }}
+                            <td class="mono right" :class="txn.type === 'deposit' ? 'is-credit' : 'is-debit'">
+                                {{ formatAmount(txn) }}
                             </td>
-
+                            <td class="muted">{{ txn.payment_method ?? '—' }}</td>
+                            <td>
+                                <span class="status-pill" :class="`is-${txn.status}`">{{ txn.status }}</span>
+                            </td>
+                            <td class="mono muted right">{{ formatDate(txn.created_at) }}</td>
                         </tr>
-
                     </tbody>
-
                 </table>
+            </div>
 
+            <div v-else-if="!loading" class="empty-state">
+                <span class="empty-mark">◆</span>
+                <p>No transactions found.</p>
+            </div>
 
-                <p v-else-if="!loading" class="empty-state">
-                    No transactions found.
-                </p>
+            <p v-else class="loading-state">Loading transactions…</p>
 
-
-                <p v-else class="loading-state">
-                    Loading transactions...
-                </p>
-
-
-                <div v-if="pagination" class="pagination">
-
-                    <button :disabled="pagination.current_page === 1" @click="changePage(pagination.current_page - 1)">
-                        Previous
-                    </button>
-
-
-                    <span>
-                        Page {{ pagination.current_page }}
-                        /
-                        {{ pagination.last_page }}
-                    </span>
-
-
-                    <button :disabled="pagination.current_page === pagination.last_page"
-                        @click="changePage(pagination.current_page + 1)">
-                        Next
-                    </button>
-
-                </div>
-
-
-            </section>
-
-        </main>
-
-    </div>
+            <div v-if="pagination && pagination.last_page > 1" class="pagination">
+                <button class="page-btn" :disabled="pagination.current_page === 1"
+                    @click="changePage(pagination.current_page - 1)">
+                    ← Previous
+                </button>
+                <span class="page-info muted">
+                    Page {{ pagination.current_page }} / {{ pagination.last_page }}
+                </span>
+                <button class="page-btn" :disabled="pagination.current_page === pagination.last_page"
+                    @click="changePage(pagination.current_page + 1)">
+                    Next →
+                </button>
+            </div>
+        </section>
+    </PlayerShell>
 </template>
 
 
 <style scoped>
-.page {
-    min-height: 100vh;
-    background: #fafaf8;
-    color: #1b2430;
-    font-family: Inter, system-ui, sans-serif;
+.card {
+    --ink: #1b2430;
+    --slate: #5b6570;
+    --paper: #fafaf8;
+    --hairline: #e4e1d8;
+    --signal: #2454ff;
+    --success: #1f9d55;
+    --pending: #c98a1c;
+    --failed: #c9432c;
+
+    background: white;
+    border: 1px solid var(--hairline);
+    border-radius: 14px;
+    padding: 22px 26px;
+    font-family: "Inter", system-ui, sans-serif;
+    color: var(--ink);
 }
 
-.topbar {
-    padding: 20px 40px;
-    border-bottom: 1px solid #e4e1d8;
-}
-
-.back-btn {
-    background: none;
-    border: none;
+.refresh-btn {
+    background: white;
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--slate);
     cursor: pointer;
 }
 
-.content {
-    padding: 40px;
+.refresh-btn:hover:not(:disabled) {
+    border-color: var(--slate);
+    color: var(--ink);
 }
 
-.card {
-    max-width: 1100px;
-    margin: auto;
+.refresh-btn:disabled {
+    opacity: 0.6;
+    cursor: default;
 }
 
-.card-header {
-    margin-bottom: 20px;
-}
-
-.filters {
+/* Toolbar / filters */
+.toolbar {
     display: flex;
-    gap: 12px;
-    margin-bottom: 20px;
+    align-items: flex-end;
+    gap: 16px;
+    padding-bottom: 18px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid var(--hairline);
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.filter-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--slate);
 }
 
 select {
-    padding: 10px;
+    padding: 9px 12px;
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    background: white;
+    color: var(--ink);
+    min-width: 150px;
+}
+
+select:focus {
+    outline: 2px solid var(--signal);
+    outline-offset: 1px;
+    border-color: var(--signal);
+}
+
+.result-count {
+    margin-left: auto;
+    font-size: 13px;
+}
+
+.muted {
+    color: var(--slate);
+}
+
+.mono {
+    font-family: "JetBrains Mono", monospace;
+}
+
+/* Table */
+.table-wrap {
+    overflow-x: auto;
 }
 
 .txn-table {
     width: 100%;
     border-collapse: collapse;
+    font-size: 13px;
 }
 
-th,
-td {
-    padding: 12px;
-    border-bottom: 1px solid #e4e1d8;
+.txn-table th {
     text-align: left;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--slate);
+    padding: 12px 8px;
+    border-bottom: 1px solid var(--hairline);
+    white-space: nowrap;
 }
 
-.mono {
-    font-family: monospace;
+.txn-table td {
+    padding: 14px 8px;
+    border-bottom: 1px solid var(--hairline);
 }
 
-.muted {
-    color: #5b6570;
+.txn-table tbody tr:last-child td {
+    border-bottom: none;
 }
 
-.capitalize {
+.txn-table tbody tr:hover {
+    background: rgba(27, 36, 48, 0.02);
+}
+
+.right {
+    text-align: right;
+}
+
+.ref-cell {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.is-credit {
+    color: var(--success);
+}
+
+.is-debit {
+    color: var(--failed);
+}
+
+.type-chip {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
     text-transform: capitalize;
 }
 
-.status-pill {
-    padding: 4px 8px;
-    border-radius: 12px;
-    font-size: 12px;
+.type-chip.is-credit {
+    background: rgba(31, 157, 85, 0.1);
+    color: var(--success);
 }
 
-.pagination {
+.type-chip.is-debit {
+    background: rgba(201, 67, 44, 0.1);
+    color: var(--failed);
+}
+
+.status-pill {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    text-transform: capitalize;
+}
+
+.status-pill.is-success {
+    background: rgba(31, 157, 85, 0.12);
+    color: var(--success);
+}
+
+.status-pill.is-pending {
+    background: rgba(201, 138, 28, 0.12);
+    color: var(--pending);
+}
+
+.status-pill.is-failed,
+.status-pill.is-cancelled {
+    background: rgba(201, 67, 44, 0.12);
+    color: var(--failed);
+}
+
+/* States */
+.empty-state {
     display: flex;
-    justify-content: center;
-    gap: 20px;
-    margin-top: 20px;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 48px 0;
+    color: var(--slate);
+    font-size: 14px;
+}
+
+.empty-mark {
+    font-size: 28px;
+    color: var(--hairline);
+}
+
+.loading-state {
+    color: var(--slate);
+    font-size: 14px;
+    padding: 32px 0;
+    text-align: center;
 }
 
 .error {
-    color: #c9432c;
+    color: var(--failed);
+    font-size: 14px;
+    padding: 20px 0;
+}
+
+/* Pagination */
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 20px;
+    padding-top: 18px;
+    border-top: 1px solid var(--hairline);
+}
+
+.page-btn {
+    background: white;
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink);
+    cursor: pointer;
+}
+
+.page-btn:hover:not(:disabled) {
+    border-color: var(--slate);
+}
+
+.page-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.page-info {
+    font-size: 13px;
+}
+
+@media (max-width: 640px) {
+    .toolbar {
+        flex-wrap: wrap;
+    }
+
+    .result-count {
+        margin-left: 0;
+    }
 }
 </style>

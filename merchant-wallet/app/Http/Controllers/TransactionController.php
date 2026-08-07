@@ -17,7 +17,11 @@ class TransactionController extends Controller
         $transactions = $this->transactionService
             ->getUserTransactions(
                 auth('api')->id(),
-                $request->validated('per_page', 15)
+                $request->validated('per_page', 15),
+                [
+                    'type' => $request->validated('type'),
+                    'status' => $request->validated('status'),
+                ]
             );
 
         return response()->json($transactions);

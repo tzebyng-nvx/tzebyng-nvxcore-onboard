@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PlayerShell from "@/components/PlayerShell.vue";
 import { Head, router } from "@inertiajs/vue3";
 import { computed, onMounted, reactive, ref } from "vue";
 
@@ -189,102 +190,90 @@ onMounted(() => {
 
   <Head title="Withdrawal" />
 
-  <div class="page">
-    <header class="topbar">
-      <button class="back-btn" @click="router.visit('/dashboard')">
-        ← Dashboard
-      </button>
-    </header>
-
-    <main class="content">
-      <div class="form-card">
-        <span class="eyebrow">New withdrawal</span>
-
-        <h1>How much are you withdrawing?</h1>
+  <PlayerShell active="withdraw" eyebrow="Wallet" title="Withdraw">
+    <div class="layout">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Withdraw funds</h2>
+          <p class="panel-sub muted">Send money to your bank account.</p>
+        </div>
 
         <form @submit.prevent="submit" novalidate>
+          <div class="field-grid">
+            <div class="field">
+              <label for="currency">Currency</label>
+              <select id="currency" v-model="form.currency" @change="onCurrencyChange">
+                <option v-for="currency in currencies" :key="currency.currency" :value="currency.currency">
+                  {{ currency.currency }}
+                </option>
+              </select>
+            </div>
 
-          <div class="field">
-            <label for="currency">Currency</label>
-
-            <select id="currency" v-model="form.currency" @change="onCurrencyChange">
-              <option v-for="currency in currencies" :key="currency.currency" :value="currency.currency">
-                {{ currency.currency }}
-              </option>
-            </select>
+            <div class="field">
+              <label for="bank">Bank</label>
+              <select id="bank" v-model="form.bank_id">
+                <option v-for="bank in filteredBanks" :key="bank.id" :value="bank.id">
+                  {{ bank.bank_name }}
+                </option>
+              </select>
+            </div>
           </div>
 
-
           <div class="field">
-            <label for="bank">Bank</label>
-
-            <select id="bank" v-model="form.bank_id">
-              <option v-for="bank in filteredBanks" :key="bank.id" :value="bank.id">
-                {{ bank.bank_name }}
-              </option>
-            </select>
-          </div>
-
-
-          <div class="field">
-            <label for="holder_name">
-              Account Holder Name
-            </label>
-
+            <label for="holder_name">Account Holder Name</label>
             <input id="holder_name" v-model="form.holder_name" type="text" placeholder="Account holder name" />
           </div>
 
-
           <div class="field">
-            <label for="account_no">
-              Account Number
-            </label>
-
+            <label for="account_no">Account Number</label>
             <input id="account_no" v-model="form.account_no" type="text" placeholder="Bank account number" />
           </div>
 
-
           <div class="field">
-            <label for="amount">
-              Amount
-            </label>
-
+            <label for="amount">Amount</label>
             <div class="amount-input">
-              <span class="currency-prefix">
-                {{ form.currency }}
-              </span>
-
+              <span class="currency-prefix">{{ form.currency }}</span>
               <input id="amount" v-model="form.amount" type="number" inputmode="decimal" step="0.01"
                 placeholder="0.00" />
             </div>
-
             <p class="hint">
               Min {{ limits.min.toFixed(2) }} · Max {{ limits.max.toFixed(2) }}
             </p>
-
-            <p v-if="amountError" class="error">
-              {{ amountError }}
-            </p>
+            <p v-if="amountError" class="error">{{ amountError }}</p>
           </div>
 
-
-          <p v-if="submitError" class="error submit-error">
-            {{ submitError }}
-          </p>
-
+          <p v-if="submitError" class="error submit-error">{{ submitError }}</p>
 
           <button type="submit" class="submit-btn" :disabled="!isValid || submitting">
             {{ submitting ? "Processing withdrawal…" : "Withdraw" }}
           </button>
-
         </form>
-      </div>
-    </main>
-  </div>
+      </section>
+
+      <aside class="side-card">
+        <span class="eyebrow muted">Summary</span>
+        <div class="side-row">
+          <span>Currency</span>
+          <strong>{{ form.currency || '—' }}</strong>
+        </div>
+        <div class="side-row">
+          <span>Amount</span>
+          <strong class="mono">{{ form.amount ? Number(form.amount).toFixed(2) : '0.00' }}</strong>
+        </div>
+        <div class="side-row">
+          <span>Beneficiary</span>
+          <strong>{{ form.holder_name || '—' }}</strong>
+        </div>
+        <div class="side-note">
+          Withdrawals are subject to review and rate limits before being sent to the gateway.
+        </div>
+      </aside>
+    </div>
+  </PlayerShell>
 </template>
 
 <style scoped>
-.page {
+.layout {
   --ink: #1b2430;
   --slate: #5b6570;
   --paper: #fafaf8;
@@ -292,39 +281,34 @@ onMounted(() => {
   --signal: #2454ff;
   --failed: #c9432c;
 
-  min-height: 100vh;
-  background: var(--paper);
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 20px;
+  align-items: start;
   color: var(--ink);
   font-family: "Inter", system-ui, sans-serif;
 }
 
-.topbar {
-  padding: 20px 40px;
-  border-bottom: 1px solid var(--hairline);
+.panel {
+  background: white;
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  padding: 26px 28px;
 }
 
-.back-btn {
-  background: transparent;
-  border: none;
-  color: var(--slate);
+.panel-head {
+  margin-bottom: 22px;
+}
+
+.panel-head h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+.panel-sub {
   font-size: 13px;
-  cursor: pointer;
-  padding: 0;
-}
-
-.back-btn:hover {
-  color: var(--ink);
-}
-
-.content {
-  display: flex;
-  justify-content: center;
-  padding: 60px 24px;
-}
-
-.form-card {
-  width: 100%;
-  max-width: 420px;
+  margin: 0;
 }
 
 .eyebrow {
@@ -332,14 +316,54 @@ onMounted(() => {
   font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
+}
+
+.muted {
   color: var(--slate);
 }
 
-h1 {
-  font-size: 26px;
+.mono {
+  font-family: "JetBrains Mono", monospace;
+}
+
+.side-card {
+  background: white;
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.side-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--slate);
+}
+
+.side-row strong {
+  color: var(--ink);
   font-weight: 600;
-  letter-spacing: -0.01em;
-  margin: 8px 0 32px;
+  text-align: right;
+}
+
+.side-note {
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 1px solid var(--hairline);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--slate);
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
 }
 
 .field {
@@ -354,7 +378,7 @@ label {
 }
 
 select,
-input[type="number"] {
+input {
   width: 100%;
   padding: 11px 12px;
   border: 1px solid var(--hairline);
@@ -441,5 +465,15 @@ input:focus {
 .submit-btn:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+@media (max-width: 820px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .field-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

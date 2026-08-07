@@ -10,6 +10,6 @@
 
 - [x] Self-service registration UI.
 
-- [ ] Filtering on the transactions page.
+- [x] Filtering on the transactions page.
 
 - [ ] More thorough automated tests.

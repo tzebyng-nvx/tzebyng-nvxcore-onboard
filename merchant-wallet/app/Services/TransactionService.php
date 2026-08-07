@@ -18,12 +18,16 @@ class TransactionService
         protected TransactionRepository $transactionRepository
     ) {}
 
+    /**
+     * @param  array{type?:string|null,status?:string|null}  $filters
+     */
     public function getUserTransactions(
         string $userId,
-        int $perPage = 15
+        int $perPage = 15,
+        array $filters = []
     ): LengthAwarePaginator {
         return $this->transactionRepository
-            ->paginateByUser($userId, $perPage);
+            ->paginateByUser($userId, $perPage, $filters);
     }
 
     /**

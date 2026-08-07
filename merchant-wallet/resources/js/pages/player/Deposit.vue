@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PlayerShell from "@/components/PlayerShell.vue";
 import { Head, router } from "@inertiajs/vue3";
 import { computed, onMounted, reactive, ref } from "vue";
 
@@ -225,15 +226,13 @@ onMounted(() => {
 
   <Head title="Deposit" />
 
-  <div class="page">
-    <header class="topbar">
-      <button class="back-btn" @click="router.visit('/dashboard')">← Dashboard</button>
-    </header>
-
-    <main class="content">
-      <div class="form-card">
-        <span class="eyebrow">New deposit</span>
-        <h1>How much are you adding?</h1>
+  <PlayerShell active="deposit" eyebrow="Wallet" title="Deposit">
+    <div class="layout">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Add funds</h2>
+          <p class="panel-sub muted">Choose a method and amount to top up your wallet.</p>
+        </div>
 
         <p v-if="loadError" class="error load-error">{{ loadError }}</p>
 
@@ -247,7 +246,7 @@ onMounted(() => {
             </select>
           </div>
 
-          <div v-if="form.payment_method === 'online_banking'" class="field">
+          <template v-if="form.payment_method === 'online_banking'">
             <div class="field">
               <label for="currency">Currency</label>
               <select id="currency" v-model="form.currency" :disabled="loading" @change="onCurrencyChange">
@@ -278,7 +277,7 @@ onMounted(() => {
               </p>
               <p v-if="amountError" class="error">{{ amountError }}</p>
             </div>
-          </div>
+          </template>
 
           <p v-if="submitError" class="error submit-error">{{ submitError }}</p>
 
@@ -286,13 +285,32 @@ onMounted(() => {
             {{ submitting ? "Starting deposit…" : "Continue to payment" }}
           </button>
         </form>
-      </div>
-    </main>
-  </div>
+      </section>
+
+      <aside class="side-card">
+        <span class="eyebrow muted">Summary</span>
+        <div class="side-row">
+          <span>Method</span>
+          <strong>{{ form.payment_method === 'duitnowqr' ? 'DuitNow QR' : 'Online Banking' }}</strong>
+        </div>
+        <div class="side-row">
+          <span>Currency</span>
+          <strong>{{ form.currency || '—' }}</strong>
+        </div>
+        <div class="side-row">
+          <span>Amount</span>
+          <strong class="mono">{{ form.amount ? Number(form.amount).toFixed(2) : '0.00' }}</strong>
+        </div>
+        <div class="side-note">
+          You'll be redirected to the gateway to complete payment securely.
+        </div>
+      </aside>
+    </div>
+  </PlayerShell>
 </template>
 
 <style scoped>
-.page {
+.layout {
   --ink: #1b2430;
   --slate: #5b6570;
   --paper: #fafaf8;
@@ -300,39 +318,34 @@ onMounted(() => {
   --signal: #2454ff;
   --failed: #c9432c;
 
-  min-height: 100vh;
-  background: var(--paper);
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 20px;
+  align-items: start;
   color: var(--ink);
   font-family: "Inter", system-ui, sans-serif;
 }
 
-.topbar {
-  padding: 20px 40px;
-  border-bottom: 1px solid var(--hairline);
+.panel {
+  background: white;
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  padding: 26px 28px;
 }
 
-.back-btn {
-  background: transparent;
-  border: none;
-  color: var(--slate);
+.panel-head {
+  margin-bottom: 22px;
+}
+
+.panel-head h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+.panel-sub {
   font-size: 13px;
-  cursor: pointer;
-  padding: 0;
-}
-
-.back-btn:hover {
-  color: var(--ink);
-}
-
-.content {
-  display: flex;
-  justify-content: center;
-  padding: 60px 24px;
-}
-
-.form-card {
-  width: 100%;
-  max-width: 420px;
+  margin: 0;
 }
 
 .eyebrow {
@@ -340,14 +353,47 @@ onMounted(() => {
   font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
+}
+
+.muted {
   color: var(--slate);
 }
 
-h1 {
-  font-size: 26px;
+.mono {
+  font-family: "JetBrains Mono", monospace;
+}
+
+/* Side summary card */
+.side-card {
+  background: white;
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.side-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--slate);
+}
+
+.side-row strong {
+  color: var(--ink);
   font-weight: 600;
-  letter-spacing: -0.01em;
-  margin: 8px 0 32px;
+}
+
+.side-note {
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 1px solid var(--hairline);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--slate);
 }
 
 .field {
@@ -460,5 +506,11 @@ input:focus {
 .submit-btn:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+@media (max-width: 820px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
