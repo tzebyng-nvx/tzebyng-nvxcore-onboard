@@ -39,7 +39,7 @@ Route::middleware([
 
             // Actions
             Route::post('deposit', 'deposit')->name('player.deposit');
-            Route::post('withdraw', 'withdraw')->name('player.withdraw');
+            Route::post('withdraw', 'withdraw')->middleware('throttle:withdraw')->name('player.withdraw');
         });
 
     Route::prefix('transactions')->controller(TransactionController::class)

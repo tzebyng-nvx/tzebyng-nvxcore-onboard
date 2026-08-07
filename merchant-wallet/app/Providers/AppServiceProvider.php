@@ -3,8 +3,11 @@
 namespace App\Providers;
 
 use Carbon\CarbonImmutable;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -24,6 +27,25 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        $this->configureRateLimiting();
+    }
+
+    /**
+     * Register application rate limiters.
+     */
+    protected function configureRateLimiting(): void
+    {
+        RateLimiter::for('withdraw', function (Request $request) {
+            $config = config('withdrawal.rate_limit');
+
+            return Limit::perMinutes(
+                $config['decay_minutes'],
+                $config['max_attempts'],
+            )->by(
+                $request->user()?->id
+                    ?? $request->ip()
+            );
+        });
     }
 
     /**

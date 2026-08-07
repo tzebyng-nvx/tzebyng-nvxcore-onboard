@@ -19,8 +19,6 @@ class PaymentCallbackService
             'payload' => $payload,
         ]);
 
-        $isCompleted = false;
-
         $paymentTransaction = PaymentTransaction::where(
             'order_id',
             $payload['order_id']
@@ -52,7 +50,19 @@ class PaymentCallbackService
 
         Log::info('Callback token verified');
 
-        DB::transaction(function () use ($payload, $paymentTransaction, &$isCompleted) {
+        $this->resolve($paymentTransaction, $payload['order_status']);
+    }
+
+    /**
+     * Apply a gateway order status to a payment transaction and its tenant
+     * transaction/wallet. Assumes tenancy is already initialized. Reused by
+     * both the live callback and the reconciliation feature.
+     */
+    public function resolve(PaymentTransaction $paymentTransaction, string $orderStatus): void
+    {
+        $isCompleted = false;
+
+        DB::transaction(function () use ($orderStatus, $paymentTransaction, &$isCompleted) {
 
             $lockedPaymentTransaction = PaymentTransaction::where(
                 'id',
@@ -69,17 +79,17 @@ class PaymentCallbackService
             if ($lockedPaymentTransaction->status === PaymentTransactionStatus::Completed->value) {
 
                 Log::info('Already completed callback ignored', [
-                    'order_id' => $payload['order_id'],
+                    'order_id' => $paymentTransaction->order_id,
                 ]);
 
                 return;
             }
 
             Log::info('Gateway status received', [
-                'order_status' => $payload['order_status'],
+                'order_status' => $orderStatus,
             ]);
 
-            if ($payload['order_status'] === 'completed') {
+            if ($orderStatus === 'completed') {
 
                 $lockedPaymentTransaction->update([
                     'status' => PaymentTransactionStatus::Completed->value,
@@ -166,7 +176,7 @@ class PaymentCallbackService
             }
 
             $lockedTransaction->update([
-                'status' => $payload['order_status'] === 'completed'
+                'status' => $orderStatus === 'completed'
                     ? 'success'
                     : 'failed',
             ]);

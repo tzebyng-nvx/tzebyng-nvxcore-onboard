@@ -74,3 +74,17 @@ php artisan test
 ```bash
 ngrok http --url=verbose-exhaust-angriness.ngrok-free.dev https://merchant-wallet.test:443 --host-header=merchant-wallet.test
 ```
+
+## Build Workers
+
+### Queue
+
+```
+php artisan queue:work
+```
+
+### Scheduler
+
+```
+php artisan schedule:work
+```

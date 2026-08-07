@@ -5,11 +5,13 @@ namespace App\Services\PaymentGateway;
 use App\Models\PaymentGatewaySetting;
 use App\Services\PaymentGateway\Dtos\Request\PaymentGatewayAuthRequestDto;
 use App\Services\PaymentGateway\Dtos\Request\PaymentGatewayBankListRequestDto;
+use App\Services\PaymentGateway\Dtos\Request\PaymentGatewayCheckStatusRequestDto;
 use App\Services\PaymentGateway\Dtos\Request\PaymentGatewayCurrencyRequestDto;
 use App\Services\PaymentGateway\Dtos\Request\PaymentGatewayGenerateOrdersRequestDto;
 use App\Services\PaymentGateway\Dtos\Request\PaymentGatewayWithdrawOrdersRequestDto;
 use App\Services\PaymentGateway\Dtos\Response\PaymentGatewayAuthDto;
 use App\Services\PaymentGateway\Dtos\Response\PaymentGatewayBankListDto;
+use App\Services\PaymentGateway\Dtos\Response\PaymentGatewayCheckStatusDto;
 use App\Services\PaymentGateway\Dtos\Response\PaymentGatewayCurrencyDto;
 use App\Services\PaymentGateway\Dtos\Response\PaymentGatewayGeneralInfoDto;
 use App\Services\PaymentGateway\Dtos\Response\PaymentGatewayGenerateOrdersDto;
@@ -143,6 +145,44 @@ class PaymentGatewayService
 
         return PaymentGatewayBankListDto::fromApi($response->json());
 
+    }
+
+    public function checkStatus(string $orderId): PaymentGatewayCheckStatusDto
+    {
+        return $this->requestCheckStatus(
+            PaymentGatewayEndpoint::CHECK_STATUS->value,
+            $orderId
+        );
+    }
+
+    public function checkWithdrawStatus(string $orderId): PaymentGatewayCheckStatusDto
+    {
+        return $this->requestCheckStatus(
+            PaymentGatewayEndpoint::CHECK_STATUS_WITHDRAW->value,
+            $orderId
+        );
+    }
+
+    private function requestCheckStatus(string $endpoint, string $orderId): PaymentGatewayCheckStatusDto
+    {
+        $requestDto = new PaymentGatewayCheckStatusRequestDto(
+            username: $this->settings->merchant_username,
+            id: $orderId,
+        );
+
+        $response = $this->httpClient()
+            ->post(
+                $this->settings->base_url.$endpoint,
+                $requestDto->toArray()
+            );
+
+        if ($response->failed()) {
+            throw new Exception(
+                'Payment gateway status check failed: '.$response->body()
+            );
+        }
+
+        return PaymentGatewayCheckStatusDto::fromApi($response->json());
     }
 
     public function createDeposit(array $data = []): PaymentGatewayGenerateOrdersDto

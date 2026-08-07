@@ -13,11 +13,13 @@ class ProvisionTenant extends Command
     protected $signature = 'tenant:provision 
         {tenant_id} 
         {domain} 
-        {--user-name=Tenant User} 
-        {--user-email=} 
-        {--user-password=password} 
-        {--admin-name=Tenant Admin} 
-        {--admin-email=} 
+        {--user-name=Tenant User}
+        {--user-email=}
+        {--user-phone=0000000000}
+        {--user-password=password}
+        {--admin-name=Tenant Admin}
+        {--admin-email=}
+        {--admin-phone=0000000000}
         {--admin-password=password}';
 
     protected $description = 'Create a tenant, map a domain, and provision initial tenant users/admins in the tenant database.';
@@ -37,24 +39,29 @@ class ProvisionTenant extends Command
 
         $userName = $this->option('user-name');
         $userEmail = $this->option('user-email') ?: $this->defaultEmail($tenantId, 'user');
+        $userPhone = $this->option('user-phone');
         $userPassword = $this->option('user-password');
 
         $adminName = $this->option('admin-name');
         $adminEmail = $this->option('admin-email') ?: $this->defaultEmail($tenantId, 'admin');
+        $adminPhone = $this->option('admin-phone');
         $adminPassword = $this->option('admin-password');
 
         $tenant->run(function () use (
             $userName,
             $userEmail,
+            $userPhone,
             $userPassword,
             $adminName,
             $adminEmail,
+            $adminPhone,
             $adminPassword
         ) {
             User::query()->firstOrCreate([
                 'email' => $userEmail,
             ], [
                 'name' => $userName,
+                'phone_number' => $userPhone,
                 'password' => Hash::make($userPassword),
             ]);
 
@@ -62,6 +69,7 @@ class ProvisionTenant extends Command
                 'email' => $adminEmail,
             ], [
                 'name' => $adminName,
+                'phone_number' => $adminPhone,
                 'password' => Hash::make($adminPassword),
             ]);
         });
@@ -72,9 +80,10 @@ class ProvisionTenant extends Command
             'Type',
             'Name',
             'Email',
+            'Phone',
         ], [
-            ['User', $userName, $userEmail],
-            ['Admin', $adminName, $adminEmail],
+            ['User', $userName, $userEmail, $userPhone],
+            ['Admin', $adminName, $adminEmail, $adminPhone],
         ]);
 
         return self::SUCCESS;
