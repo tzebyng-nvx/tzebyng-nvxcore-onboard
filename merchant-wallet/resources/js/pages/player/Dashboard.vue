@@ -157,6 +157,9 @@ onMounted(loadDashboard);
       <section class="transactions-card">
         <div class="card-header">
           <h2>Recent transactions</h2>
+          <button class="refresh-btn" :disabled="loading" @click="loadDashboard">
+            {{ loading ? "Refreshing…" : "Refresh" }}
+          </button>
         </div>
 
         <p v-if="loadError" class="load-error">{{ loadError }}</p>
@@ -328,10 +331,37 @@ onMounted(loadDashboard);
   padding: 24px 28px;
 }
 
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
 .card-header h2 {
   font-size: 16px;
   font-weight: 600;
-  margin: 0 0 16px;
+  margin: 0;
+}
+
+.refresh-btn {
+  background: transparent;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--slate);
+  cursor: pointer;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  border-color: var(--slate);
+  color: var(--ink);
+}
+
+.refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .txn-table {

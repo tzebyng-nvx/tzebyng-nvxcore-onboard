@@ -22,9 +22,11 @@ php artisan make:class Services/UserService
 php artisan tenant:provision acme acme.merchant-wallet.test \
   --user-name="Acme User" \
   --user-email="user@acme.test" \
+  --user-phone="0123456789" \
   --user-password="secret" \
   --admin-name="Acme Admin" \
   --admin-email="admin@acme.test" \
+  --admin-phone="0987654321" \
   --admin-password="secret"
 ```
 

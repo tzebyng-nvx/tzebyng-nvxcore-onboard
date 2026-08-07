@@ -230,8 +230,8 @@ class PaymentGatewayService
             currency: $data['currency'],
             order_id: $data['order_id'],
             bank_id: $data['bank_id'],
-            holder_name: 'John Doe', // $data['holder_name']
-            account_no: '12332343432', // $data['account_no'],
+            holder_name: $data['holder_name'],
+            account_no: $data['account_no'],
             callback_url: config('app.payment_callback_url'),
         );
 

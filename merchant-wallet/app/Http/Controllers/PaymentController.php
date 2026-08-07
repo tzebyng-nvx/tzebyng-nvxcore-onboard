@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\TransactionStatus;
 use App\Http\Requests\GetPaymentBankListRequest;
 use App\Http\Requests\PaymentGeneralInfoRequest;
 use App\Http\Requests\TransactionCreateDepositRequest;
@@ -60,8 +61,18 @@ class PaymentController extends Controller
             ...$request->validated(),
             'order_id' => $transaction->id,
             'email' => $user->email,
-            'phone_number' => '0123445678', // TODO: add this column in all users table, hardcoded now
+            'phone_number' => $user->phone_number,
         ]);
+
+        // gateway rejected the order: mark failed, do not fake success
+        if (! $gatewayDepositResult->status) {
+            $this->transactionService->updateStatus($transaction, TransactionStatus::Failed);
+
+            return response()->json([
+                'status' => false,
+                'message' => $gatewayDepositResult->message ?? 'Deposit could not be initiated.',
+            ], 422);
+        }
 
         // update record
         $this->transactionService->updatePaymentId([$transaction->id, $gatewayDepositResult->payment_id]);
