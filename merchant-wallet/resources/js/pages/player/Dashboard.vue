@@ -11,13 +11,17 @@ interface Transaction {
   created_at: string;
 }
 
-interface WalletResponse {
+interface SummaryResponse {
   balance: string;
   currency: string;
+  total_in: string;
+  total_out: string;
 }
 
 const balance = ref<string | null>(null);
 const currency = ref("MYR");
+const totalIn = ref<string>("0");
+const totalOut = ref<string>("0");
 const transactions = ref<Transaction[]>([]);
 const loading = ref(true);
 const loadError = ref<string | null>(null);
@@ -74,7 +78,7 @@ async function loadDashboard() {
     const [
       walletRes,
       txnRes] = await Promise.all([
-        fetch("/api/wallet", { headers: authHeaders() }),
+        fetch("/api/wallet/summary", { headers: authHeaders() }),
         fetch("/api/transactions?per_page=5", { headers: authHeaders() }),
       ]);
 
@@ -92,11 +96,13 @@ async function loadDashboard() {
       return;
     }
 
-    const wallet: WalletResponse = await walletRes.json();
+    const summary: SummaryResponse = await walletRes.json();
     const txnPage = await txnRes.json();
 
-    balance.value = wallet.balance;
-    currency.value = wallet.currency;
+    balance.value = summary.balance;
+    currency.value = summary.currency;
+    totalIn.value = summary.total_in;
+    totalOut.value = summary.total_out;
     transactions.value = txnPage.data ?? txnPage;
   } catch (e: any) {
     loadError.value = e.message ?? "Something went wrong loading your dashboard.";
@@ -124,76 +130,157 @@ onMounted(loadDashboard);
 
   <Head title="Dashboard" />
 
-  <div class="page">
-    <header class="topbar">
+  <div class="app">
+    <!-- ───────── Sidebar ───────── -->
+    <aside class="sidebar">
       <div class="brand">
         <span class="brand-mark">◆</span>
         <span class="brand-name">Ledger</span>
       </div>
-      <button class="logout-btn" @click="logout">Log out</button>
-    </header>
 
-    <main class="content">
-      <section class="balance-card">
-        <span class="eyebrow">Available balance</span>
-        <div v-if="loading" class="balance-amount is-loading">—</div>
-        <div v-else-if="balance !== null" class="balance-amount">
-          {{ currency }} {{ Number(balance).toFixed(2) }}
+      <nav class="nav">
+        <span class="nav-label">Menu</span>
+        <button class="nav-item is-active">
+          <span class="nav-icon">▣</span> Overview
+        </button>
+        <button class="nav-item" @click="router.visit('/deposit')">
+          <span class="nav-icon">↓</span> Deposit
+        </button>
+        <button class="nav-item" @click="router.visit('/withdraw')">
+          <span class="nav-icon">↑</span> Withdraw
+        </button>
+        <button class="nav-item" @click="router.visit('/transaction')">
+          <span class="nav-icon">≣</span> Transactions
+        </button>
+      </nav>
+
+      <button class="logout-btn" @click="logout">
+        <span class="nav-icon">⏻</span> Log out
+      </button>
+    </aside>
+
+    <!-- ───────── Main workspace ───────── -->
+    <main class="workspace">
+      <header class="workspace-header">
+        <div>
+          <span class="eyebrow muted">Wallet</span>
+          <h1>Overview</h1>
         </div>
-        <div v-else class="balance-amount is-error">Unavailable</div>
+        <button class="refresh-btn" :disabled="loading" @click="loadDashboard">
+          <span class="nav-icon">↻</span>
+          {{ loading ? "Refreshing…" : "Refresh" }}
+        </button>
+      </header>
 
-        <div class="actions">
-          <button class="action-btn is-primary" @click="router.visit('/deposit')">
-            Deposit
-          </button>
-          <button class="action-btn" @click="router.visit('/withdraw')">Withdraw</button>
-          <button class="action-btn" @click="router.visit('/transaction')">
-            Transactions
-          </button>
-        </div>
+      <div class="grid">
+        <!-- Balance hero -->
+        <section class="balance-card">
+          <div class="balance-head">
+            <span class="eyebrow">Available balance</span>
+            <span class="currency-tag">{{ currency }}</span>
+          </div>
 
-      </section>
+          <div v-if="loading" class="balance-amount is-loading">—</div>
+          <div v-else-if="balance !== null" class="balance-amount">
+            <span class="balance-currency">{{ currency }}</span>
+            {{ Number(balance).toFixed(2) }}
+          </div>
+          <div v-else class="balance-amount is-error">Unavailable</div>
 
+          <div class="actions">
+            <button class="action-btn is-primary" @click="router.visit('/deposit')">
+              <span class="nav-icon">↓</span> Deposit
+            </button>
+            <button class="action-btn" @click="router.visit('/withdraw')">
+              <span class="nav-icon">↑</span> Withdraw
+            </button>
+          </div>
+        </section>
+
+        <!-- KPIs -->
+        <section class="kpi kpi-in">
+          <div class="kpi-head">
+            <span class="eyebrow muted">Total in</span>
+            <span class="kpi-badge is-credit">↓</span>
+          </div>
+          <div class="kpi-amount is-credit">
+            {{ currency }} {{ Number(totalIn).toFixed(2) }}
+          </div>
+          <span class="kpi-note">Lifetime deposits</span>
+        </section>
+
+        <section class="kpi kpi-out">
+          <div class="kpi-head">
+            <span class="eyebrow muted">Total out</span>
+            <span class="kpi-badge is-debit">↑</span>
+          </div>
+          <div class="kpi-amount is-debit">
+            {{ currency }} {{ Number(totalOut).toFixed(2) }}
+          </div>
+          <span class="kpi-note">Lifetime withdrawals</span>
+        </section>
+
+        <section class="kpi kpi-net">
+          <div class="kpi-head">
+            <span class="eyebrow muted">Net flow</span>
+            <span class="kpi-badge">≈</span>
+          </div>
+          <div class="kpi-amount">
+            {{ currency }} {{ (Number(totalIn) - Number(totalOut)).toFixed(2) }}
+          </div>
+          <span class="kpi-note">In minus out</span>
+        </section>
+      </div>
+
+      <!-- Recent transactions -->
       <section class="transactions-card">
         <div class="card-header">
-          <h2>Recent transactions</h2>
-          <button class="refresh-btn" :disabled="loading" @click="loadDashboard">
-            {{ loading ? "Refreshing…" : "Refresh" }}
-          </button>
+          <div>
+            <h2>Recent transactions</h2>
+            <span class="card-sub muted">Your latest 5 movements</span>
+          </div>
         </div>
 
         <p v-if="loadError" class="load-error">{{ loadError }}</p>
 
-        <table v-else-if="!loading && transactions.length" class="txn-table">
-          <thead>
-            <tr>
-              <th>Reference</th>
-              <th>Type</th>
-              <th>Amount</th>
-              <th>Status</th>
-              <th>Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="txn in transactions" :key="txn.id">
-              <td class="mono">{{ txn.id }}</td>
-              <td class="capitalize">{{ txn.type }}</td>
-              <td class="mono" :class="txn.type === 'deposit' ? 'is-credit' : 'is-debit'">
-                {{ formatAmount(txn) }}
-              </td>
-              <td>
-                <span class="status-pill" :class="`is-${txn.status}`">{{
-                  txn.status
-                  }}</span>
-              </td>
-              <td class="mono muted">{{ formatDate(txn.created_at) }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div v-else-if="!loading && transactions.length" class="table-wrap">
+          <table class="txn-table">
+            <thead>
+              <tr>
+                <th>Reference</th>
+                <th>Type</th>
+                <th class="right">Amount</th>
+                <th>Status</th>
+                <th class="right">Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="txn in transactions" :key="txn.id">
+                <td class="mono muted ref-cell">{{ txn.id }}</td>
+                <td>
+                  <span class="type-chip" :class="txn.type === 'deposit' ? 'is-credit' : 'is-debit'">
+                    {{ txn.type }}
+                  </span>
+                </td>
+                <td class="mono right" :class="txn.type === 'deposit' ? 'is-credit' : 'is-debit'">
+                  {{ formatAmount(txn) }}
+                </td>
+                <td>
+                  <span class="status-pill" :class="`is-${txn.status}`">{{ txn.status }}</span>
+                </td>
+                <td class="mono muted right">{{ formatDate(txn.created_at) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
-        <p v-else-if="!loading" class="empty-state">
-          No transactions yet. Make your first deposit to get started.
-        </p>
+        <div v-else-if="!loading" class="empty-state">
+          <span class="empty-mark">◆</span>
+          <p>No transactions yet.</p>
+          <button class="action-btn is-primary" @click="router.visit('/deposit')">
+            Make your first deposit
+          </button>
+        </div>
 
         <p v-else class="loading-state">Loading transactions…</p>
       </section>
@@ -202,7 +289,7 @@ onMounted(loadDashboard);
 </template>
 
 <style scoped>
-.page {
+.app {
   --ink: #1b2430;
   --slate: #5b6570;
   --paper: #fafaf8;
@@ -212,68 +299,136 @@ onMounted(loadDashboard);
   --pending: #c98a1c;
   --failed: #c9432c;
 
+  display: grid;
+  grid-template-columns: 248px 1fr;
   min-height: 100vh;
   background: var(--paper);
   color: var(--ink);
   font-family: "Inter", system-ui, sans-serif;
 }
 
-.topbar {
+/* ───────── Sidebar ───────── */
+.sidebar {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px 40px;
-  border-bottom: 1px solid var(--hairline);
+  flex-direction: column;
+  gap: 8px;
+  padding: 24px 16px;
+  background: var(--ink);
+  color: var(--paper);
+  position: sticky;
+  top: 0;
+  height: 100vh;
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 8px 12px 20px;
 }
 
 .brand-mark {
   color: var(--signal);
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .brand-name {
   font-family: "JetBrains Mono", monospace;
-  font-size: 13px;
-  letter-spacing: 0.06em;
+  font-size: 14px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--slate);
+  color: var(--paper);
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.nav-label {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(250, 250, 248, 0.35);
+  padding: 4px 12px 10px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(250, 250, 248, 0.7);
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.nav-item:hover {
+  background: rgba(250, 250, 248, 0.06);
+  color: var(--paper);
+}
+
+.nav-item.is-active {
+  background: rgba(36, 84, 255, 0.16);
+  color: var(--paper);
+  box-shadow: inset 2px 0 0 var(--signal);
+}
+
+.nav-icon {
+  font-size: 13px;
+  width: 16px;
+  text-align: center;
+  opacity: 0.9;
 }
 
 .logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(250, 250, 248, 0.14);
+  border-radius: 8px;
   background: transparent;
-  border: 1px solid var(--hairline);
-  border-radius: 6px;
-  padding: 8px 14px;
-  font-size: 13px;
-  color: var(--slate);
+  color: rgba(250, 250, 248, 0.7);
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
 }
 
 .logout-btn:hover {
-  border-color: var(--slate);
-  color: var(--ink);
-}
-
-.content {
-  max-width: 880px;
-  margin: 0 auto;
-  padding: 40px;
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
-}
-
-.balance-card {
-  background: var(--ink);
+  border-color: rgba(250, 250, 248, 0.35);
   color: var(--paper);
-  border-radius: 12px;
-  padding: 32px;
+}
+
+/* ───────── Workspace ───────── */
+.workspace {
+  padding: 32px 40px 48px;
+  max-width: 1100px;
+  width: 100%;
+}
+
+.workspace-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.workspace-header h1 {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 4px 0 0;
 }
 
 .eyebrow {
@@ -284,11 +439,66 @@ onMounted(loadDashboard);
   color: rgba(250, 250, 248, 0.55);
 }
 
+.muted {
+  color: var(--slate);
+}
+
+/* ───────── Grid: hero + KPIs ───────── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.balance-card {
+  grid-column: 1 / -1;
+  background: linear-gradient(135deg, #1b2430 0%, #232f3e 100%);
+  color: var(--paper);
+  border-radius: 16px;
+  padding: 28px 32px;
+  position: relative;
+  overflow: hidden;
+}
+
+.balance-card::after {
+  content: "◆";
+  position: absolute;
+  right: -10px;
+  top: -20px;
+  font-size: 160px;
+  color: rgba(36, 84, 255, 0.10);
+  pointer-events: none;
+}
+
+.balance-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.currency-tag {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: rgba(250, 250, 248, 0.7);
+  border: 1px solid rgba(250, 250, 248, 0.2);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
 .balance-amount {
   font-family: "JetBrains Mono", monospace;
-  font-size: 40px;
+  font-size: 44px;
   font-weight: 600;
-  margin: 10px 0 24px;
+  letter-spacing: -0.01em;
+  margin: 14px 0 24px;
+}
+
+.balance-currency {
+  font-size: 20px;
+  color: rgba(250, 250, 248, 0.55);
+  margin-right: 6px;
 }
 
 .balance-amount.is-loading {
@@ -296,8 +506,8 @@ onMounted(loadDashboard);
 }
 
 .balance-amount.is-error {
-  color: var(--failed);
-  font-size: 20px;
+  color: #ff9c88;
+  font-size: 22px;
 }
 
 .actions {
@@ -306,14 +516,18 @@ onMounted(loadDashboard);
 }
 
 .action-btn {
-  padding: 10px 20px;
-  border-radius: 6px;
-  border: 1px solid rgba(250, 250, 248, 0.25);
-  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: 1px solid rgba(250, 250, 248, 0.22);
+  background: rgba(250, 250, 248, 0.04);
   color: var(--paper);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
+  transition: transform 0.1s ease, opacity 0.15s ease;
 }
 
 .action-btn.is-primary {
@@ -322,13 +536,74 @@ onMounted(loadDashboard);
 }
 
 .action-btn:hover {
-  opacity: 0.9;
+  opacity: 0.92;
+  transform: translateY(-1px);
 }
 
-.transactions-card {
+/* ───────── KPI cards ───────── */
+.kpi {
+  background: white;
   border: 1px solid var(--hairline);
-  border-radius: 12px;
-  padding: 24px 28px;
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.kpi-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.kpi-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  font-size: 13px;
+  background: rgba(27, 36, 48, 0.06);
+  color: var(--slate);
+}
+
+.kpi-badge.is-credit {
+  background: rgba(31, 157, 85, 0.12);
+  color: var(--success);
+}
+
+.kpi-badge.is-debit {
+  background: rgba(201, 67, 44, 0.12);
+  color: var(--failed);
+}
+
+.kpi-amount {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.kpi-amount.is-credit {
+  color: var(--success);
+}
+
+.kpi-amount.is-debit {
+  color: var(--failed);
+}
+
+.kpi-note {
+  font-size: 12px;
+  color: var(--slate);
+}
+
+/* ───────── Transactions ───────── */
+.transactions-card {
+  background: white;
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  padding: 22px 26px;
 }
 
 .card-header {
@@ -344,14 +619,23 @@ onMounted(loadDashboard);
   margin: 0;
 }
 
+.card-sub {
+  font-size: 12px;
+}
+
 .refresh-btn {
-  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: white;
   border: 1px solid var(--hairline);
-  border-radius: 6px;
-  padding: 6px 12px;
+  border-radius: 8px;
+  padding: 8px 14px;
   font-size: 13px;
+  font-weight: 500;
   color: var(--slate);
   cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
 }
 
 .refresh-btn:hover:not(:disabled) {
@@ -362,6 +646,10 @@ onMounted(loadDashboard);
 .refresh-btn:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+.table-wrap {
+  overflow-x: auto;
 }
 
 .txn-table {
@@ -376,25 +664,37 @@ onMounted(loadDashboard);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--slate);
-  padding: 8px 0;
+  padding: 10px 8px;
   border-bottom: 1px solid var(--hairline);
+  white-space: nowrap;
 }
 
 .txn-table td {
-  padding: 12px 0;
+  padding: 14px 8px;
   border-bottom: 1px solid var(--hairline);
+}
+
+.txn-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.txn-table tbody tr:hover {
+  background: rgba(27, 36, 48, 0.02);
+}
+
+.right {
+  text-align: right;
+}
+
+.ref-cell {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mono {
   font-family: "JetBrains Mono", monospace;
-}
-
-.muted {
-  color: var(--slate);
-}
-
-.capitalize {
-  text-transform: capitalize;
 }
 
 .is-credit {
@@ -402,7 +702,26 @@ onMounted(loadDashboard);
 }
 
 .is-debit {
-  color: var(--ink);
+  color: var(--failed);
+}
+
+.type-chip {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.type-chip.is-credit {
+  background: rgba(31, 157, 85, 0.1);
+  color: var(--success);
+}
+
+.type-chip.is-debit {
+  background: rgba(201, 67, 44, 0.1);
+  color: var(--failed);
 }
 
 .status-pill {
@@ -429,7 +748,25 @@ onMounted(loadDashboard);
   color: var(--failed);
 }
 
-.empty-state,
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 0;
+  color: var(--slate);
+  font-size: 14px;
+}
+
+.empty-mark {
+  font-size: 28px;
+  color: var(--hairline);
+}
+
+.empty-state .action-btn {
+  color: white;
+}
+
 .loading-state,
 .load-error {
   color: var(--slate);
@@ -439,5 +776,47 @@ onMounted(loadDashboard);
 
 .load-error {
   color: var(--failed);
+}
+
+/* ───────── Responsive ───────── */
+@media (max-width: 900px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    flex-direction: row;
+    align-items: center;
+    height: auto;
+    position: static;
+    padding: 12px 16px;
+    gap: 6px;
+    overflow-x: auto;
+  }
+
+  .brand {
+    padding: 0 12px 0 4px;
+  }
+
+  .nav {
+    flex-direction: row;
+    flex: 1;
+  }
+
+  .nav-label {
+    display: none;
+  }
+
+  .nav-item.is-active {
+    box-shadow: inset 0 -2px 0 var(--signal);
+  }
+
+  .workspace {
+    padding: 24px 20px 40px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

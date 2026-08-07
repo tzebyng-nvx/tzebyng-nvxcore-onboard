@@ -26,6 +26,25 @@ class TransactionService
             ->paginateByUser($userId, $perPage);
     }
 
+    /**
+     * Total successful money in (deposits) and out (withdrawals) for a user.
+     *
+     * @return array{total_in:string,total_out:string}
+     */
+    public function getUserTotals(string $userId): array
+    {
+        return [
+            'total_in' => $this->transactionRepository->sumByUserTypeStatus(
+                $userId,
+                TransactionType::Deposit
+            ),
+            'total_out' => $this->transactionRepository->sumByUserTypeStatus(
+                $userId,
+                TransactionType::Withdrawal
+            ),
+        ];
+    }
+
     public function createDeposit(array $data): Transaction
     {
         return DB::transaction(function () use ($data) {

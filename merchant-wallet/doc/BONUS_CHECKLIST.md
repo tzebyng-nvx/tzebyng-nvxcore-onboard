@@ -4,7 +4,7 @@
 
 - [x] Rate limiting on withdrawals.
 
-- [ ] A small dashboard with summary stats (total in / out, current balance).
+- [x] A small dashboard with summary stats (total in / out, current balance).
 
 - [ ] Display the gateway merchant float balance.
 

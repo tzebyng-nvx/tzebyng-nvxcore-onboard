@@ -50,6 +50,7 @@ Route::middleware([
     Route::prefix('wallet')->controller(WalletController::class)
         ->group(function () {
             Route::get('/', 'index')->name('player.wallet.index');
+            Route::get('summary', 'summary')->name('player.wallet.summary');
         });
 
     Route::get('/tenant-context', fn () => response()->json([
