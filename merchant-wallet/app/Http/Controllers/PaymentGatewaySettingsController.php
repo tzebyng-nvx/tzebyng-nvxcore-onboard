@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StorePaymentGatewaySettingsRequest;
 use App\Http\Requests\UpdatePaymentGatewaySettingsRequest;
+use App\Services\PaymentGateway\PaymentGatewayService;
 use App\Services\PaymentGatewaySettingsService;
 use Exception;
+use Illuminate\Http\Request;
 
 class PaymentGatewaySettingsController extends Controller
 {
@@ -14,6 +16,25 @@ class PaymentGatewaySettingsController extends Controller
     public function __construct(PaymentGatewaySettingsService $paymentGatewaySettingsService)
     {
         $this->paymentGatewaySettingsService = $paymentGatewaySettingsService;
+    }
+
+    /**
+     * Current merchant float balance held at the payment gateway.
+     */
+    public function floatBalance(Request $request, PaymentGatewayService $paymentGatewayService)
+    {
+        try {
+            $currency = (string) $request->query('currency', 'MYR');
+
+            return response()->json(
+                $paymentGatewayService->getBalance($currency)
+            );
+        } catch (Exception $e) {
+            return response()->json([
+                'error' => 'Failed to retrieve gateway float balance',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function show()

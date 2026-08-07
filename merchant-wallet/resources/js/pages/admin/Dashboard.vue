@@ -27,9 +27,13 @@ const loadError = ref<string | null>(null);
 const statusFilter = ref<string>("");
 const typeFilter = ref<string>("");
 
+const floatBalance = ref<string | null>(null);
+const floatLoading = ref(true);
+const floatError = ref<string | null>(null);
+
 function authHeaders(): HeadersInit {
-    const token = localStorage.getItem("access_token");
-    const tokenType = localStorage.getItem("token_type") ?? "Bearer";
+    const token = localStorage.getItem("admin_access_token");
+    const tokenType = localStorage.getItem("admin_token_type") ?? "Bearer";
     return {
         Accept: "application/json",
         Authorization: `${tokenType} ${token}`,
@@ -100,6 +104,34 @@ async function loadDashboard() {
     }
 }
 
+async function loadFloatBalance() {
+    floatLoading.value = true;
+    floatError.value = null;
+
+    try {
+        const res = await fetch("/api/admin/payments/float-balance", {
+            headers: authHeaders(),
+        });
+
+        if (res.status === 401) {
+            logout();
+            return;
+        }
+
+        if (!res.ok) {
+            floatError.value = "Unavailable";
+            return;
+        }
+
+        const data = await res.json();
+        floatBalance.value = data.balance ?? null;
+    } catch (e) {
+        floatError.value = "Unavailable";
+    } finally {
+        floatLoading.value = false;
+    }
+}
+
 function formatAmount(txn: AdminTransaction): string {
     const sign = txn.type === "deposit" ? "+" : "-";
     return `${sign}${Number(txn.amount).toFixed(2)}`;
@@ -112,7 +144,10 @@ function formatDate(iso: string): string {
     });
 }
 
-onMounted(loadDashboard);
+onMounted(() => {
+    loadDashboard();
+    loadFloatBalance();
+});
 </script>
 
 <template>
@@ -134,6 +169,23 @@ onMounted(loadDashboard);
         </header>
 
         <main class="content">
+            <section class="float-card">
+                <div class="float-info">
+                    <span class="eyebrow">Gateway merchant float balance</span>
+                    <div v-if="floatLoading" class="float-amount is-loading">—</div>
+                    <div v-else-if="floatBalance !== null" class="float-amount">
+                        {{ info?.currency ?? "MYR" }} {{ Number(floatBalance).toFixed(2) }}
+                    </div>
+                    <div v-else class="float-amount is-error">
+                        {{ floatError ?? "Unavailable" }}
+                    </div>
+                    <span class="float-note">Live balance held with the payment gateway.</span>
+                </div>
+                <button class="refresh-btn" :disabled="floatLoading" @click="loadFloatBalance">
+                    {{ floatLoading ? "Refreshing…" : "↻ Refresh" }}
+                </button>
+            </section>
+
             <section class="stats-grid">
                 <div class="stat-card">
                     <span class="eyebrow">Total transactions</span>
@@ -290,6 +342,77 @@ onMounted(loadDashboard);
     display: flex;
     flex-direction: column;
     gap: 28px;
+}
+
+.float-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    background: linear-gradient(135deg, #1b2430 0%, #232f3e 100%);
+    color: var(--paper);
+    border-radius: 16px;
+    padding: 26px 32px;
+    position: relative;
+    overflow: hidden;
+}
+
+.float-card::after {
+    content: "◆";
+    position: absolute;
+    right: 8px;
+    top: -24px;
+    font-size: 150px;
+    color: rgba(36, 84, 255, 0.10);
+    pointer-events: none;
+}
+
+.float-card .eyebrow {
+    color: rgba(250, 250, 248, 0.55);
+}
+
+.float-amount {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 38px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 10px 0 6px;
+}
+
+.float-amount.is-loading {
+    color: rgba(250, 250, 248, 0.4);
+}
+
+.float-amount.is-error {
+    color: #ff9c88;
+    font-size: 22px;
+}
+
+.float-note {
+    font-size: 12px;
+    color: rgba(250, 250, 248, 0.55);
+}
+
+.float-card .refresh-btn {
+    flex-shrink: 0;
+    background: rgba(250, 250, 248, 0.06);
+    border: 1px solid rgba(250, 250, 248, 0.22);
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--paper);
+    cursor: pointer;
+    z-index: 1;
+}
+
+.float-card .refresh-btn:hover:not(:disabled) {
+    background: rgba(250, 250, 248, 0.12);
+}
+
+.float-card .refresh-btn:disabled {
+    opacity: 0.6;
+    cursor: default;
 }
 
 .stats-grid {

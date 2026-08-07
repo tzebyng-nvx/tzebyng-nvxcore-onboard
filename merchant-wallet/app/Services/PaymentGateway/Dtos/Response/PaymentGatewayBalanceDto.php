@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\PaymentGateway\Response;
+namespace App\Services\PaymentGateway\Dtos\Response;
 
 readonly class PaymentGatewayBalanceDto
 {

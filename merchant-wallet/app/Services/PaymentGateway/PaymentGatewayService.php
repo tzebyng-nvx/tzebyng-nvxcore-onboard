@@ -4,12 +4,14 @@ namespace App\Services\PaymentGateway;
 
 use App\Models\PaymentGatewaySetting;
 use App\Services\PaymentGateway\Dtos\Request\PaymentGatewayAuthRequestDto;
+use App\Services\PaymentGateway\Dtos\Request\PaymentGatewayBalanceRequestDto;
 use App\Services\PaymentGateway\Dtos\Request\PaymentGatewayBankListRequestDto;
 use App\Services\PaymentGateway\Dtos\Request\PaymentGatewayCheckStatusRequestDto;
 use App\Services\PaymentGateway\Dtos\Request\PaymentGatewayCurrencyRequestDto;
 use App\Services\PaymentGateway\Dtos\Request\PaymentGatewayGenerateOrdersRequestDto;
 use App\Services\PaymentGateway\Dtos\Request\PaymentGatewayWithdrawOrdersRequestDto;
 use App\Services\PaymentGateway\Dtos\Response\PaymentGatewayAuthDto;
+use App\Services\PaymentGateway\Dtos\Response\PaymentGatewayBalanceDto;
 use App\Services\PaymentGateway\Dtos\Response\PaymentGatewayBankListDto;
 use App\Services\PaymentGateway\Dtos\Response\PaymentGatewayCheckStatusDto;
 use App\Services\PaymentGateway\Dtos\Response\PaymentGatewayCurrencyDto;
@@ -145,6 +147,30 @@ class PaymentGatewayService
 
         return PaymentGatewayBankListDto::fromApi($response->json());
 
+    }
+
+    public function getBalance(string $currency = 'MYR'): PaymentGatewayBalanceDto
+    {
+        $auth = $this->getAuth();
+
+        $requestDto = new PaymentGatewayBalanceRequestDto(
+            auth: $auth->auth,
+            currency: $currency,
+        );
+
+        $response = $this->httpClient()
+            ->post(
+                $this->settings->base_url.PaymentGatewayEndpoint::BALANCE->value,
+                $requestDto->toArray()
+            );
+
+        if ($response->failed()) {
+            throw new Exception(
+                'Payment gateway balance failed: '.$response->body()
+            );
+        }
+
+        return PaymentGatewayBalanceDto::fromApi($response->json());
     }
 
     public function checkStatus(string $orderId): PaymentGatewayCheckStatusDto

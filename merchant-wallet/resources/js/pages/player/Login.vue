@@ -132,6 +132,11 @@ const tape = [
         </form>
 
         <p class="footnote">No account? <a href="#" class="link-accent">Create one</a></p>
+
+        <div class="admin-switch">
+          <span>Are you an administrator?</span>
+          <a href="/admin/login" class="admin-switch-link">Admin login →</a>
+        </div>
       </div>
     </main>
   </div>
@@ -423,6 +428,30 @@ input[type="password"]:focus {
   color: var(--slate);
   margin-top: 28px;
   text-align: center;
+}
+
+.admin-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 12px 16px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--slate);
+}
+
+.admin-switch-link {
+  font-weight: 500;
+  color: var(--signal);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.admin-switch-link:hover {
+  text-decoration: underline;
 }
 
 /* ---------- Responsive ---------- */

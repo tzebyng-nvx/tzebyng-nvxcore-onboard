@@ -28,6 +28,12 @@ Route::middleware([
     Route::post('admin/me', fn () => app(AuthController::class, ['guard' => 'admin'])->me())
         ->name('admin.me');
 
+    // Gateway merchant float balance
+    Route::get(
+        'admin/payments/float-balance',
+        [PaymentGatewaySettingsController::class, 'floatBalance']
+    )->name('admin.payments.float-balance');
+
     // Payment Gateway Settings
     Route::get(
         'admin/payment-gateway-settings',
