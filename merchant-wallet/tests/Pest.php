@@ -66,8 +66,8 @@ function createTenantWithSchema(string $id): Tenant
         $tenant = Tenant::create(['id' => $id]);
         $tenant->domains()->create(['domain' => $id.'.merchant-wallet.test']);
 
-        // The central default create_users_table migration leaves a vestigial
-        // `users` table; drop it so we can build the tenant-shaped schema.
+        // Tests share one in-memory sqlite connection, so drop any tenant
+        // tables left by a previous run before rebuilding the tenant schema.
         Schema::dropIfExists('transactions');
         Schema::dropIfExists('wallets');
         Schema::dropIfExists('users');
