@@ -18,6 +18,13 @@ interface SummaryResponse {
   total_out: string;
 }
 
+interface PlayerProfile {
+  name: string;
+  email: string;
+  phone_number: string;
+}
+
+const profile = ref<PlayerProfile | null>(null);
 const balance = ref<string | null>(null);
 const currency = ref("MYR");
 const totalIn = ref<string>("0");
@@ -77,27 +84,32 @@ async function loadDashboard() {
   try {
     const [
       walletRes,
-      txnRes] = await Promise.all([
+      txnRes,
+      meRes] = await Promise.all([
         fetch("/api/wallet/summary", { headers: authHeaders() }),
         fetch("/api/transactions?per_page=5", { headers: authHeaders() }),
+        fetch("/api/me", { method: "POST", headers: authHeaders() }),
       ]);
 
     if (
       walletRes.status === 401 ||
-      txnRes.status === 401) {
+      txnRes.status === 401 ||
+      meRes.status === 401) {
       logout();
       return;
     }
 
     if (
       !walletRes.ok ||
-      !txnRes.ok) {
+      !txnRes.ok ||
+      !meRes.ok) {
       loadError.value = "Could not load your wallet right now.";
       return;
     }
 
     const summary: SummaryResponse = await walletRes.json();
     const txnPage = await txnRes.json();
+    profile.value = await meRes.json();
 
     balance.value = summary.balance;
     currency.value = summary.currency;
@@ -175,25 +187,36 @@ onMounted(loadDashboard);
       <div class="grid">
         <!-- Balance hero -->
         <section class="balance-card">
-          <div class="balance-head">
-            <span class="eyebrow">Available balance</span>
+          <div class="balance-top">
+            <div v-if="profile" class="profile">
+              <span class="profile-avatar">{{ profile.name.charAt(0).toUpperCase() }}</span>
+              <div class="profile-meta">
+                <span class="profile-name">{{ profile.name }}</span>
+                <span class="profile-line">{{ profile.email }} · {{ profile.phone_number }}</span>
+              </div>
+            </div>
             <span class="currency-tag">{{ currency }}</span>
           </div>
 
-          <div v-if="loading" class="balance-amount is-loading">—</div>
-          <div v-else-if="balance !== null" class="balance-amount">
-            <span class="balance-currency">{{ currency }}</span>
-            {{ Number(balance).toFixed(2) }}
-          </div>
-          <div v-else class="balance-amount is-error">Unavailable</div>
+          <div class="balance-main">
+            <div class="balance-left">
+              <span class="eyebrow">Available balance</span>
+              <div v-if="loading" class="balance-amount is-loading">—</div>
+              <div v-else-if="balance !== null" class="balance-amount">
+                <span class="balance-currency">{{ currency }}</span>
+                {{ Number(balance).toFixed(2) }}
+              </div>
+              <div v-else class="balance-amount is-error">Unavailable</div>
+            </div>
 
-          <div class="actions">
-            <button class="action-btn is-primary" @click="router.visit('/deposit')">
-              <span class="nav-icon">↓</span> Deposit
-            </button>
-            <button class="action-btn" @click="router.visit('/withdraw')">
-              <span class="nav-icon">↑</span> Withdraw
-            </button>
+            <div class="actions">
+              <button class="action-btn is-primary" @click="router.visit('/deposit')">
+                <span class="nav-icon">↓</span> Deposit
+              </button>
+              <button class="action-btn" @click="router.visit('/withdraw')">
+                <span class="nav-icon">↑</span> Withdraw
+              </button>
+            </div>
           </div>
         </section>
 
@@ -456,7 +479,7 @@ onMounted(loadDashboard);
   background: linear-gradient(135deg, #1b2430 0%, #232f3e 100%);
   color: var(--paper);
   border-radius: 16px;
-  padding: 28px 32px;
+  padding: 20px 26px;
   position: relative;
   overflow: hidden;
 }
@@ -464,17 +487,21 @@ onMounted(loadDashboard);
 .balance-card::after {
   content: "◆";
   position: absolute;
-  right: -10px;
-  top: -20px;
-  font-size: 160px;
+  right: -20px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 150px;
   color: rgba(36, 84, 255, 0.10);
   pointer-events: none;
 }
 
-.balance-head {
+.balance-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(250, 250, 248, 0.08);
 }
 
 .currency-tag {
@@ -487,16 +514,65 @@ onMounted(loadDashboard);
   padding: 3px 10px;
 }
 
+.profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.profile-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(36, 84, 255, 0.22);
+  color: var(--paper);
+  font-weight: 600;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.profile-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.profile-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.profile-line {
+  font-size: 12px;
+  color: rgba(250, 250, 248, 0.6);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.balance-main {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
 .balance-amount {
   font-family: "JetBrains Mono", monospace;
-  font-size: 44px;
+  font-size: 34px;
   font-weight: 600;
   letter-spacing: -0.01em;
-  margin: 14px 0 24px;
+  margin: 6px 0 0;
+  line-height: 1.1;
 }
 
 .balance-currency {
-  font-size: 20px;
+  font-size: 16px;
   color: rgba(250, 250, 248, 0.55);
   margin-right: 6px;
 }
@@ -507,12 +583,13 @@ onMounted(loadDashboard);
 
 .balance-amount.is-error {
   color: #ff9c88;
-  font-size: 22px;
+  font-size: 20px;
 }
 
 .actions {
   display: flex;
-  gap: 12px;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
 .action-btn {
@@ -817,6 +894,21 @@ onMounted(loadDashboard);
 
   .grid {
     grid-template-columns: 1fr;
+  }
+
+  .balance-main {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .actions {
+    width: 100%;
+  }
+
+  .actions .action-btn {
+    flex: 1;
+    justify-content: center;
   }
 }
 </style>

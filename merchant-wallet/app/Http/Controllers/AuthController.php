@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\RegisterRequest;
+use App\Models\User;
+use App\Services\WalletService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
@@ -22,7 +25,7 @@ class AuthController extends Controller implements HasMiddleware
     public static function middleware(): array
     {
         return [
-            new Middleware('auth:api', except: ['login']),
+            new Middleware('auth:api', except: ['login', 'register']),
         ];
     }
 
@@ -49,6 +52,27 @@ class AuthController extends Controller implements HasMiddleware
         }
 
         return $this->respondWithToken($token);
+    }
+
+    /**
+     * Self-service registration: create a user + wallet and issue a token.
+     *
+     * @return JsonResponse
+     */
+    public function register()
+    {
+        $data = app(RegisterRequest::class)->validated();
+
+        $user = User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'phone_number' => $data['phone_number'],
+            'password' => $data['password'],
+        ]);
+
+        app(WalletService::class)->getOrCreateWallet($user->id);
+
+        return $this->respondWithToken($this->guard()->login($user));
     }
 
     /**

@@ -8,7 +8,7 @@
 
 - [x] Display the gateway merchant float balance.
 
-- [ ] Self-service registration UI.
+- [x] Self-service registration UI.
 
 - [ ] Filtering on the transactions page.
 

@@ -131,7 +131,7 @@ const tape = [
           </button>
         </form>
 
-        <p class="footnote">No account? <a href="#" class="link-accent">Create one</a></p>
+        <p class="footnote">No account? <a href="/register" class="link-accent">Create one</a></p>
 
         <div class="admin-switch">
           <span>Are you an administrator?</span>

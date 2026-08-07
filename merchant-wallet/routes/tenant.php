@@ -19,6 +19,7 @@ Route::middleware([
     $playerPages = [
         '' => ['component' => 'player/Login',         'title' => 'Tenant Login', 'name' => 'home'],
         'login' => ['component' => 'player/Login',     'title' => 'Tenant Login',     'name' => 'login'],
+        'register' => ['component' => 'player/Register', 'title' => 'Create Account', 'name' => 'register'],
         'dashboard' => ['component' => 'player.Dashboard', 'title' => 'Tenant Dashboard', 'name' => 'dashboard'],
         'deposit' => ['component' => 'player.Deposit',   'title' => 'Tenant Deposit',   'name' => 'deposit'],
         'withdraw' => ['component' => 'player.Withdraw',   'title' => 'Tenant Withdraw',   'name' => 'withdraw'],

@@ -15,6 +15,8 @@ Route::middleware([
 ])->group(function () {
     Route::post('login', fn () => app(AuthController::class, ['guard' => 'api'])->login())
         ->name('player.login');
+    Route::post('register', fn () => app(AuthController::class, ['guard' => 'api'])->register())
+        ->name('player.register');
 });
 
 Route::middleware([
