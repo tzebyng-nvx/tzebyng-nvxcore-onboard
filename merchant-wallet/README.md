@@ -37,6 +37,17 @@ This command will:
 - create the tenant database via Stancl tenancy
 - seed an initial tenant user and tenant admin into the tenant database
 
+
+### Platform admin
+
+```bash
+php artisan platform:create-admin \
+  --name="Platform Admin" \
+  --email="admin@platform.test" \
+  --phone="0123456789" \
+  --password="secret"
+```
+
 ## Create Migration File
 
 ### For Tenant

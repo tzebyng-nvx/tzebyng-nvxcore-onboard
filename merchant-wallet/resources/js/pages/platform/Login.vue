@@ -21,12 +21,11 @@ async function submit() {
     authError.value = null;
 
     try {
-        const response = await fetch("api/login", {
+        const response = await fetch("api/platform/login", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 Accept: "application/json",
-                "X-Tenant": window.location.hostname.split(".")[0],
             },
             body: JSON.stringify({
                 email: form.email,

@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Admin;
+use App\Models\PlatformAdmin;
 use App\Models\User;
 
 return [
@@ -51,6 +52,10 @@ return [
             'driver' => 'jwt',
             'provider' => 'admins',
         ],
+        'platform-admin' => [
+            'driver' => 'jwt',
+            'provider' => 'platform-admins',
+        ],
     ],
 
     /*
@@ -79,11 +84,10 @@ return [
             'driver' => 'eloquent',
             'model' => env('AUTH_ADMIN_MODEL', Admin::class),
         ],
-
-        // 'users' => [
-        //     'driver' => 'database',
-        //     'table' => 'users',
-        // ],
+        'platform-admins' => [
+            'driver' => 'eloquent',
+            'model' => env('AUTH_PLATFORM_ADMIN_MODEL', PlatformAdmin::class),
+        ],
     ],
 
     /*
