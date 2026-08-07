@@ -12,4 +12,4 @@
 
 - [x] Filtering on the transactions page.
 
-- [ ] More thorough automated tests.
+- [x] More thorough automated tests.

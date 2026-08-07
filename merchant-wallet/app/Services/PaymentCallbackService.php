@@ -76,7 +76,7 @@ class PaymentCallbackService
                 'status' => $lockedPaymentTransaction->status,
             ]);
 
-            if ($lockedPaymentTransaction->status === PaymentTransactionStatus::Completed->value) {
+            if ($lockedPaymentTransaction->status === PaymentTransactionStatus::Completed) {
 
                 Log::info('Already completed callback ignored', [
                     'order_id' => $paymentTransaction->order_id,

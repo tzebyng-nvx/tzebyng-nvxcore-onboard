@@ -14,10 +14,16 @@ beforeEach(function (): void {
         $tenant->domains()->create(['domain' => 'auth-login.merchant-wallet.test']);
 
         $tenant->run(function () {
+            // Drop the vestigial central `users` table before building the
+            // tenant-shaped schema.
+            Schema::dropIfExists('admins');
+            Schema::dropIfExists('users');
+
             Schema::create('users', function (Blueprint $table) {
-                $table->id();
+                $table->uuid('id')->primary();
                 $table->string('name');
                 $table->string('email')->unique();
+                $table->string('phone_number')->nullable();
                 $table->timestamp('email_verified_at')->nullable();
                 $table->string('password');
                 $table->rememberToken();
@@ -25,9 +31,10 @@ beforeEach(function (): void {
             });
 
             Schema::create('admins', function (Blueprint $table) {
-                $table->id();
+                $table->uuid('id')->primary();
                 $table->string('name');
                 $table->string('email')->unique();
+                $table->string('phone_number')->nullable();
                 $table->timestamp('email_verified_at')->nullable();
                 $table->string('password');
                 $table->rememberToken();
