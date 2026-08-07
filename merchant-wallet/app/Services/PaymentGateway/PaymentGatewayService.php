@@ -3,6 +3,7 @@
 namespace App\Services\PaymentGateway;
 
 use App\Models\PaymentGatewaySetting;
+use App\Services\PaymentGateway\Contracts\PaymentGatewayContract;
 use App\Services\PaymentGateway\Dtos\Request\PaymentGatewayAuthRequestDto;
 use App\Services\PaymentGateway\Dtos\Request\PaymentGatewayBalanceRequestDto;
 use App\Services\PaymentGateway\Dtos\Request\PaymentGatewayBankListRequestDto;
@@ -24,7 +25,7 @@ use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-class PaymentGatewayService
+class PaymentGatewayService implements PaymentGatewayContract
 {
     private string $baseUrl;
 

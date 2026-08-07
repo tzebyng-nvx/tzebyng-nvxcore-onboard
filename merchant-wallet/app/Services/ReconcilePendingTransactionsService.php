@@ -6,7 +6,7 @@ use App\Enums\PaymentTransactionStatus;
 use App\Enums\TransactionType;
 use App\Models\PaymentTransaction;
 use App\Models\Transaction;
-use App\Services\PaymentGateway\PaymentGatewayService;
+use App\Services\PaymentGateway\Contracts\PaymentGatewayContract;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -76,7 +76,7 @@ class ReconcilePendingTransactionsService
             return false;
         }
 
-        $gateway = app(PaymentGatewayService::class);
+        $gateway = app(PaymentGatewayContract::class);
 
         $dto = $transaction->type === TransactionType::Withdrawal
             ? $gateway->checkWithdrawStatus($paymentTransaction->order_id)

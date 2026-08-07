@@ -1,5 +1,7 @@
 <?php
 
+use App\Exceptions\GatewayRejectedException;
+use App\Exceptions\InsufficientBalanceException;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -24,4 +26,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        // A rejected payment => 422, not 500. Rendered uniformly so controllers
+        // stay thin and don't repeat try/catch branching.
+        $exceptions->render(fn (InsufficientBalanceException|GatewayRejectedException $e) => response()->json([
+            'status' => false,
+            'message' => $e->getMessage(),
+        ], 422));
     })->create();

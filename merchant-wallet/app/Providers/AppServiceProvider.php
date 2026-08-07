@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Services\PaymentGateway\Contracts\PaymentGatewayContract;
+use App\Services\PaymentGateway\PaymentGatewayService;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -18,7 +20,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(PaymentGatewayContract::class, PaymentGatewayService::class);
     }
 
     /**

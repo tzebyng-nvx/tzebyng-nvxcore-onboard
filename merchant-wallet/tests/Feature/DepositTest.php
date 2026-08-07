@@ -3,8 +3,8 @@
 use App\Enums\TransactionStatus;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\PaymentGateway\Contracts\PaymentGatewayContract;
 use App\Services\PaymentGateway\Dtos\Response\PaymentGatewayGenerateOrdersDto;
-use App\Services\PaymentGateway\PaymentGatewayService;
 
 beforeEach(function () {
     createTenantWithSchema('deposit-test');
@@ -28,7 +28,7 @@ function depositPayload(array $overrides = []): array
 }
 
 test('a successful deposit persists a pending transaction with the gateway payment id', function () {
-    $this->mock(PaymentGatewayService::class)
+    $this->mock(PaymentGatewayContract::class)
         ->shouldReceive('createDeposit')
         ->once()
         ->andReturn(new PaymentGatewayGenerateOrdersDto(
@@ -51,7 +51,7 @@ test('a successful deposit persists a pending transaction with the gateway payme
 });
 
 test('a rejected deposit marks the transaction failed and returns 422', function () {
-    $this->mock(PaymentGatewayService::class)
+    $this->mock(PaymentGatewayContract::class)
         ->shouldReceive('createDeposit')
         ->once()
         ->andReturn(new PaymentGatewayGenerateOrdersDto(

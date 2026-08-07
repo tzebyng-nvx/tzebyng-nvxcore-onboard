@@ -7,8 +7,8 @@ use App\Models\PaymentTransaction;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Services\PaymentGateway\Contracts\PaymentGatewayContract;
 use App\Services\PaymentGateway\Dtos\Response\PaymentGatewayCheckStatusDto;
-use App\Services\PaymentGateway\PaymentGatewayService;
 use App\Services\ReconcilePendingTransactionsService;
 use Illuminate\Support\Str;
 
@@ -58,7 +58,7 @@ function checkStatusDto(string $orderStatus): PaymentGatewayCheckStatusDto
 }
 
 test('a stale pending deposit reported completed is resolved and credited', function () {
-    $this->mock(PaymentGatewayService::class)
+    $this->mock(PaymentGatewayContract::class)
         ->shouldReceive('checkStatus')
         ->once()
         ->with($this->orderId)
@@ -73,7 +73,7 @@ test('a stale pending deposit reported completed is resolved and credited', func
 });
 
 test('a stale pending deposit still pending at the gateway is skipped', function () {
-    $this->mock(PaymentGatewayService::class)
+    $this->mock(PaymentGatewayContract::class)
         ->shouldReceive('checkStatus')
         ->once()
         ->andReturn(checkStatusDto('pending'));
@@ -86,7 +86,7 @@ test('a stale pending deposit still pending at the gateway is skipped', function
 });
 
 test('a stale pending deposit reported failed is marked failed', function () {
-    $this->mock(PaymentGatewayService::class)
+    $this->mock(PaymentGatewayContract::class)
         ->shouldReceive('checkStatus')
         ->once()
         ->andReturn(checkStatusDto('failed'));
