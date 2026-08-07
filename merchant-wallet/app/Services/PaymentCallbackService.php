@@ -87,9 +87,7 @@ class PaymentCallbackService
                 'status' => $lockedPaymentTransaction->status,
             ]);
 
-            // Idempotency: once a payment reaches a terminal state the funds
-            // have already been applied. Bail before touching the wallet again
-            // so a replayed callback can't double-credit or double-release.
+            // Idempotency: can't double-credit or double-release.
             if (in_array($lockedPaymentTransaction->status, [
                 PaymentTransactionStatus::Completed,
                 PaymentTransactionStatus::Failed,
@@ -153,11 +151,6 @@ class PaymentCallbackService
         });
     }
 
-    /**
-     * Apply the settled gateway result to the wallet through the ledger-backed
-     * WalletService. Every branch that moves money records a ledger entry.
-     * Assumes we are inside the resolve() DB transaction.
-     */
     private function applyToWallet(Transaction $transaction, bool $isCompleted): void
     {
         // A failed deposit never moved funds, so there is nothing to undo.
