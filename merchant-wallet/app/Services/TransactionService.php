@@ -15,7 +15,8 @@ use Illuminate\Support\Str;
 class TransactionService
 {
     public function __construct(
-        protected TransactionRepository $transactionRepository
+        protected TransactionRepository $transactionRepository,
+        protected WalletService $walletService
     ) {}
 
     /**
@@ -89,7 +90,7 @@ class TransactionService
             ]);
 
             // 2) Create record in tenant db > transaction
-            return Transaction::create([
+            $transaction = Transaction::create([
                 'id' => $orderId,
                 'user_id' => $data['user_id'],
                 'type' => TransactionType::Withdrawal,
@@ -100,6 +101,18 @@ class TransactionService
                 'payment_method' => null,
                 'bank_id' => $data['bank_id'],
             ]);
+
+            // 3) Reserve the funds now. Locks the wallet and rejects the whole
+            // transaction if the available balance is insufficient,
+            // never hold or debit money
+            $this->walletService->holdForWithdrawal(
+                $data['user_id'],
+                $transaction->id,
+                (string) $data['amount'],
+                $data['currency']
+            );
+
+            return $transaction;
         });
     }
 
@@ -112,6 +125,22 @@ class TransactionService
         ]);
 
         return $transaction->refresh();
+    }
+
+    public function failWithdrawal(Transaction $transaction): Transaction
+    {
+        return DB::transaction(function () use ($transaction) {
+            $this->walletService->releaseHoldForUser(
+                $transaction->user_id,
+                $transaction->id,
+                (string) $transaction->amount,
+                $transaction->currency
+            );
+
+            $transaction->update(['status' => TransactionStatus::Failed]);
+
+            return $transaction->refresh();
+        });
     }
 
     public function updatePaymentId(array $data)

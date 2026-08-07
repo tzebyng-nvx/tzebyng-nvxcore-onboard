@@ -2,6 +2,7 @@
 
 namespace App\Repositories;
 
+use App\Enums\WalletLedgerEntryType;
 use App\Models\Wallet;
 use App\Models\WalletLedger;
 
@@ -41,6 +42,14 @@ class WalletRepository
             ->first();
     }
 
+    public function lockWalletByUserIdAndCurrency(string $userId, string $currency): ?Wallet
+    {
+        return Wallet::where('user_id', $userId)
+            ->where('currency', $currency)
+            ->lockForUpdate()
+            ->first();
+    }
+
     public function incrementBalance(Wallet $wallet, string $amount): Wallet
     {
         $wallet->increment('balance', $amount);
@@ -67,5 +76,28 @@ class WalletRepository
         $wallet->decrement('held_balance', $amount);
 
         return $wallet->refresh();
+    }
+
+    /**
+     * Append an immutable audit row describing a single balance/hold mutation.
+     * The (transaction_id, entry_type) unique index makes this the idempotency
+     * boundary: a replayed callback trying to record the same entry twice hits
+     * a DB constraint violation instead of silently double-applying.
+     *
+     * @param  string  $amount  Positive magnitude; the entry_type gives direction.
+     */
+    public function recordLedgerEntry(
+        Wallet $wallet,
+        string $transactionId,
+        WalletLedgerEntryType $entryType,
+        string $amount
+    ): WalletLedger {
+        return WalletLedger::create([
+            'wallet_id' => $wallet->id,
+            'transaction_id' => $transactionId,
+            'entry_type' => $entryType->value,
+            'amount' => $amount,
+            'balance_after' => $wallet->balance,
+        ]);
     }
 }

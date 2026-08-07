@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\PaymentTransactionStatus;
+use App\Enums\TransactionStatus;
 use App\Enums\TransactionType;
 use App\Models\PaymentGatewaySetting;
 use App\Models\PaymentTransaction;
@@ -13,6 +14,16 @@ use Illuminate\Support\Facades\Log;
 
 class PaymentCallbackService
 {
+    /**
+     * Gateway vocabulary for a settled-good order. External value, so it stays
+     * a string here; we map it onto our own enums for anything we persist.
+     */
+    private const GATEWAY_STATUS_COMPLETED = 'completed';
+
+    public function __construct(
+        protected WalletService $walletService
+    ) {}
+
     public function handle(array $payload): void
     {
         Log::info('Payment callback received', [
@@ -60,9 +71,9 @@ class PaymentCallbackService
      */
     public function resolve(PaymentTransaction $paymentTransaction, string $orderStatus): void
     {
-        $isCompleted = false;
+        $isCompleted = $orderStatus === self::GATEWAY_STATUS_COMPLETED;
 
-        DB::transaction(function () use ($orderStatus, $paymentTransaction, &$isCompleted) {
+        DB::transaction(function () use ($orderStatus, $paymentTransaction, $isCompleted) {
 
             $lockedPaymentTransaction = PaymentTransaction::where(
                 'id',
@@ -76,10 +87,17 @@ class PaymentCallbackService
                 'status' => $lockedPaymentTransaction->status,
             ]);
 
-            if ($lockedPaymentTransaction->status === PaymentTransactionStatus::Completed) {
+            // Idempotency: once a payment reaches a terminal state the funds
+            // have already been applied. Bail before touching the wallet again
+            // so a replayed callback can't double-credit or double-release.
+            if (in_array($lockedPaymentTransaction->status, [
+                PaymentTransactionStatus::Completed,
+                PaymentTransactionStatus::Failed,
+            ], true)) {
 
-                Log::info('Already completed callback ignored', [
+                Log::info('Terminal payment callback ignored', [
                     'order_id' => $paymentTransaction->order_id,
+                    'status' => $lockedPaymentTransaction->status,
                 ]);
 
                 return;
@@ -89,20 +107,11 @@ class PaymentCallbackService
                 'order_status' => $orderStatus,
             ]);
 
-            if ($orderStatus === 'completed') {
-
-                $lockedPaymentTransaction->update([
-                    'status' => PaymentTransactionStatus::Completed->value,
-                ]);
-
-                $isCompleted = true;
-
-            } else {
-
-                $lockedPaymentTransaction->update([
-                    'status' => PaymentTransactionStatus::Failed->value,
-                ]);
-            }
+            $lockedPaymentTransaction->update([
+                'status' => $isCompleted
+                    ? PaymentTransactionStatus::Completed->value
+                    : PaymentTransactionStatus::Failed->value,
+            ]);
 
             Log::info('Payment transaction updated', [
                 'new_status' => $lockedPaymentTransaction->fresh()->status,
@@ -130,61 +139,66 @@ class PaymentCallbackService
                 'status' => $lockedTransaction->status,
             ]);
 
-            if ($isCompleted) {
-
-                Log::info('Processing wallet update', [
-                    'transaction_type' => $lockedTransaction->type,
-                    'amount' => $lockedTransaction->amount,
-                ]);
-
-                $wallet = Wallet::where('user_id', $lockedTransaction->user_id)
-                    ->where('currency', $lockedTransaction->currency)
-                    ->lockForUpdate()
-                    ->first();
-
-                if (! $wallet) {
-                    Log::error('Wallet not found', [
-                        'user_id' => $lockedTransaction->user_id,
-                        'currency' => $lockedTransaction->currency,
-                    ]);
-
-                    return;
-                }
-
-                if ($lockedTransaction->type === TransactionType::Deposit) {
-
-                    $wallet->increment(
-                        'balance',
-                        $lockedTransaction->amount
-                    );
-
-                    Log::info('Deposit wallet credited', [
-                        'balance' => $wallet->fresh()->balance,
-                    ]);
-
-                } elseif ($lockedTransaction->type === TransactionType::Withdrawal) {
-
-                    $wallet->decrement(
-                        'balance',
-                        $lockedTransaction->amount
-                    );
-
-                    Log::info('Withdrawal wallet debited', [
-                        'balance' => $wallet->fresh()->balance,
-                    ]);
-                }
-            }
+            $this->applyToWallet($lockedTransaction, $isCompleted);
 
             $lockedTransaction->update([
-                'status' => $orderStatus === 'completed'
-                    ? 'success'
-                    : 'failed',
+                'status' => $isCompleted
+                    ? TransactionStatus::Success
+                    : TransactionStatus::Failed,
             ]);
 
             Log::info('Tenant transaction updated', [
                 'status' => $lockedTransaction->fresh()->status,
             ]);
         });
+    }
+
+    /**
+     * Apply the settled gateway result to the wallet through the ledger-backed
+     * WalletService. Every branch that moves money records a ledger entry.
+     * Assumes we are inside the resolve() DB transaction.
+     */
+    private function applyToWallet(Transaction $transaction, bool $isCompleted): void
+    {
+        // A failed deposit never moved funds, so there is nothing to undo.
+        if (! $isCompleted && $transaction->type === TransactionType::Deposit) {
+            return;
+        }
+
+        $wallet = Wallet::where('user_id', $transaction->user_id)
+            ->where('currency', $transaction->currency)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $wallet) {
+            Log::error('Wallet not found', [
+                'user_id' => $transaction->user_id,
+                'currency' => $transaction->currency,
+            ]);
+
+            return;
+        }
+
+        $amount = (string) $transaction->amount;
+
+        if ($isCompleted && $transaction->type === TransactionType::Deposit) {
+            $this->walletService->creditDeposit($wallet, $transaction->id, $amount);
+            Log::info('Deposit wallet credited', ['balance' => $wallet->fresh()->balance]);
+
+            return;
+        }
+
+        if ($transaction->type === TransactionType::Withdrawal) {
+            if ($isCompleted) {
+                // Finalize: reserved funds actually leave the wallet.
+                $this->walletService->debitWithdrawal($wallet, $transaction->id, $amount);
+                Log::info('Withdrawal wallet debited', ['balance' => $wallet->fresh()->balance]);
+            } else {
+                // Rejected: return the reserved hold to spendable balance.
+                $this->walletService->releaseHold($wallet, $transaction->id, $amount);
+                Log::info('Withdrawal hold released', ['held' => $wallet->fresh()->held_balance]);
+            }
+        }
     }
 
     // can be used to check the token:

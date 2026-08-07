@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\TransactionStatus;
+use App\Exceptions\InsufficientBalanceException;
 use App\Http\Requests\GetPaymentBankListRequest;
 use App\Http\Requests\PaymentGeneralInfoRequest;
 use App\Http\Requests\TransactionCreateDepositRequest;
@@ -84,11 +85,19 @@ class PaymentController extends Controller
     {
         $user = auth('api')->user();
 
-        // create withdrawal transaction
-        $transaction = $this->transactionService->createWithdrawal([
-            ...$request->validated(),
-            'user_id' => $user->id,
-        ]);
+        // create withdrawal transaction + reserve funds (hold). Rejects with
+        // 422 if the available balance cannot cover the amount.
+        try {
+            $transaction = $this->transactionService->createWithdrawal([
+                ...$request->validated(),
+                'user_id' => $user->id,
+            ]);
+        } catch (InsufficientBalanceException $e) {
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
 
         // connect to 3rd party withdrawal gateway
         $gatewayWithdrawalResult = $this->paymentGatewayService->createWithdrawal([
@@ -97,6 +106,16 @@ class PaymentController extends Controller
             'holder_name' => $request->holder_name,
             'account_no' => $request->account_no,
         ]);
+
+        // gateway rejected the order: release the hold, mark failed, don't fake success
+        if (! $gatewayWithdrawalResult->status) {
+            $this->transactionService->failWithdrawal($transaction);
+
+            return response()->json([
+                'status' => false,
+                'message' => $gatewayWithdrawalResult->message ?? 'Withdrawal could not be initiated.',
+            ], 422);
+        }
 
         // update payment id from gateway response
         $this->transactionService->updatePaymentId([

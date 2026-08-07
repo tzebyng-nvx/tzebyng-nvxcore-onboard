@@ -107,6 +107,19 @@ function createTenantWithSchema(string $id): Tenant
             $table->timestamps();
         });
 
+        Schema::dropIfExists('wallet_ledgers');
+        Schema::create('wallet_ledgers', function (Blueprint $table) {
+            $table->uuid('id')->primary();
+            $table->uuid('wallet_id');
+            $table->uuid('transaction_id');
+            $table->string('entry_type');
+            $table->decimal('amount', 18, 2);
+            $table->decimal('balance_after', 18, 2);
+            $table->timestamps();
+            $table->index(['wallet_id', 'created_at']);
+            $table->unique(['transaction_id', 'entry_type'], 'uq_ledger_txn_entry_type');
+        });
+
         Schema::dropIfExists('payment_gateway_settings');
         Schema::create('payment_gateway_settings', function (Blueprint $table) {
             $table->uuid('id')->primary();
