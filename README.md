@@ -331,7 +331,7 @@ php artisan make:migration create_wallets_table                                 
 php artisan tenants:migrate      # run tenant migrations for all tenants
 php artisan migrate              # run central migrations
 
-# workers
-php artisan queue:work
-php artisan schedule:work
+# workers (composer dev already runs the queue via queue:listen; the scheduler is NOT included)
+php artisan queue:work      # standalone queue worker (use when not running composer dev)
+php artisan schedule:work   # scheduler — run this to fire ReconcilePendingTransactions
 ```
