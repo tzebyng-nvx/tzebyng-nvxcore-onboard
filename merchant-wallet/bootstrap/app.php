@@ -8,6 +8,10 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Spatie\Permission\Middleware\PermissionMiddleware;
+use Spatie\Permission\Middleware\RoleMiddleware;
+use Stancl\Tenancy\Exceptions\TenantCouldNotBeIdentifiedOnDomainException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -21,6 +25,12 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);
+
+        // spatie/laravel-permission middleware aliases for the access model.
+        $middleware->alias([
+            'role' => RoleMiddleware::class,
+            'permission' => PermissionMiddleware::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
@@ -33,4 +43,30 @@ return Application::configure(basePath: dirname(__DIR__))
             'status' => false,
             'message' => $e->getMessage(),
         ], 422));
+
+        // An unknown/unprovisioned tenant domain should land on a friendly
+        // "workspace not found" page rather than the raw tenancy exception.
+        $exceptions->render(function (TenantCouldNotBeIdentifiedOnDomainException $e, Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Tenant not found for this domain.',
+                ], 404);
+            }
+
+            // Strip the leading (tenant) label to reach the central parent
+            // domain, e.g. acme1.merchant-wallet.test -> merchant-wallet.test.
+            $centralDomains = config('tenancy.central_domains', []);
+            $parts = explode('.', $request->getHost());
+            $parent = count($parts) > 1 ? implode('.', array_slice($parts, 1)) : $request->getHost();
+            $centralDomain = in_array($parent, $centralDomains, true) ? $parent : ($centralDomains[0] ?? $parent);
+
+            $port = $request->getPort();
+            $host = in_array($port, [80, 443, null], true) ? $centralDomain : "{$centralDomain}:{$port}";
+
+            return Inertia::render('errors/TenantNotFound', [
+                'host' => $request->getHost(),
+                'centralUrl' => "{$request->getScheme()}://{$host}/",
+            ])->toResponse($request)->setStatusCode(404);
+        });
     })->create();
