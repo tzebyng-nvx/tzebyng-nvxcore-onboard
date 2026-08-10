@@ -60,6 +60,9 @@ is provisioned, so they never need manual setup.
 Configuration lives in `.env` (copy from `.env.example`). Key values:
 
 - `DB_CONNECTION=pgsql`, `DB_PORT=5432`, `DB_DATABASE=...`
+- `APP_URL` — how the app is served; set `https://merchant-wallet.test` for Herd
+  or `http://localhost:8000` for local `artisan serve`. The seeded tenant domain
+  follows its host (`demo.merchant-wallet.test` vs `demo.localhost`).
 - `THIRD_PARTY_API_BASE_URL` — payment gateway
 - `PAYMENT_CALLBACK_URL` — public URL the gateway calls back to (see ngrok below)
 - `JWT_SECRET` — generate with `php artisan jwt:secret`

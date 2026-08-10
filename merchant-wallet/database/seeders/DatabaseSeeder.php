@@ -50,6 +50,11 @@ class DatabaseSeeder extends Seeder
         $tenant = Tenant::firstOrCreate(['id' => $tenantId]);
         $tenant->domains()->firstOrCreate(['domain' => $domain]);
 
+        // Keep the demo tenant on exactly the derived domain: prune any leftover
+        // domains from earlier seeds under a different APP_URL (e.g. a stale
+        // `demo.merchant-wallet.test` row after switching to local `artisan serve`).
+        $tenant->domains()->where('domain', '!=', $domain)->delete();
+
         $tenant->run(function () {
             $access = app(AccessControlService::class);
 
