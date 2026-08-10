@@ -24,19 +24,30 @@ The app is served by [Laravel Herd](https://herd.laravel.com/) at
 ```bash
 git clone <repo> && cd merchant-wallet
 
-# install deps, copy .env, generate key, migrate, build assets
+# install deps, copy .env, generate key, create the central DB, migrate, build assets
 composer setup
 
-# create the central DB (see .env DB_DATABASE) in Postgres first, then:
-php artisan migrate            # central connection
 php artisan db:seed            # creates a demo tenant (id `demo`, domain
                                # demo.merchant-wallet.test) + a central platform admin
 ```
 
+`composer setup` runs `php artisan db:create-central`, which creates the central
+database named in `.env` (`DB_DATABASE`) if it doesn't exist — so you only need
+Postgres running, not a pre-created database. The configured `DB_USERNAME` must
+have `CREATEDB` privilege. Run it standalone any time with:
+
+```bash
+php artisan db:create-central          # create if missing (no-op if it exists)
+php artisan db:create-central --force  # drop and recreate (destroys central data)
+```
+
+Per-tenant databases are created automatically by `stancl/tenancy` when a tenant
+is provisioned, so they never need manual setup.
+
 Configuration lives in `.env` (copy from `.env.example`). Key values:
 
 - `DB_CONNECTION=pgsql`, `DB_PORT=5432`, `DB_DATABASE=...`
-- `THIRD_PARTY_API_BASE_URL`, `THIRD_PARTY_API_KEY` — payment gateway
+- `THIRD_PARTY_API_BASE_URL` — payment gateway
 - `PAYMENT_CALLBACK_URL` — public URL the gateway calls back to (see ngrok below)
 - `JWT_SECRET` — generate with `php artisan jwt:secret`
 
