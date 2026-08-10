@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class CreateCentralDatabase extends Command
 {
@@ -30,8 +31,20 @@ class CreateCentralDatabase extends Command
         Config::set("database.connections.$connection.database", 'postgres');
         DB::purge($connection);
 
-        $exists = (bool) DB::connection($connection)
-            ->selectOne('SELECT 1 FROM pg_database WHERE datname = ?', [$database]);
+        try {
+            $exists = (bool) DB::connection($connection)
+                ->selectOne('SELECT 1 FROM pg_database WHERE datname = ?', [$database]);
+        } catch (Throwable $e) {
+            $this->error("Could not connect to PostgreSQL: {$e->getMessage()}");
+            $this->line('Check your DB_HOST / DB_PORT / DB_USERNAME / DB_PASSWORD in .env — '.
+                'the configured user must be able to connect and have the CREATEDB privilege.');
+
+            // Restore the connection before bailing out.
+            Config::set("database.connections.$connection.database", $database);
+            DB::purge($connection);
+
+            return self::FAILURE;
+        }
 
         if ($exists && $this->option('force')) {
             DB::connection($connection)->statement("DROP DATABASE \"$database\"");

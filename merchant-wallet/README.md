@@ -24,12 +24,22 @@ The app is served by [Laravel Herd](https://herd.laravel.com/) at
 ```bash
 git clone <repo> && cd merchant-wallet
 
-# install deps, copy .env, generate key, create the central DB, migrate, build assets
+# 1. Create .env FIRST and fill in your Postgres credentials — composer setup
+#    creates the central DB and migrates, so it needs a working DB_PASSWORD.
+cp .env.example .env
+#    then edit .env: set DB_PASSWORD (and DB_USERNAME/DB_DATABASE if different)
+
+# 2. install deps, generate key, create the central DB, migrate, build assets
 composer setup
 
-php artisan db:seed            # creates a demo tenant (id `demo`, domain
-                               # demo.merchant-wallet.test) + a central platform admin
+# 3. seed a demo tenant (id `demo`, domain demo.merchant-wallet.test)
+#    + a central platform admin
+php artisan db:seed
 ```
+
+> `composer setup` copies `.env` only if it doesn't already exist, so creating it
+> in step 1 is safe. Skipping step 1 leaves `DB_PASSWORD` empty and the DB steps
+> fail with `fe_sendauth: no password supplied`.
 
 `composer setup` runs `php artisan db:create-central`, which creates the central
 database named in `.env` (`DB_DATABASE`) if it doesn't exist — so you only need
