@@ -7,9 +7,10 @@ ledger.
 
 ## Stack
 
-- **PHP 8.4**, **Laravel 13**
+- **PHP 8.3+**, **Laravel 13**
 - **PostgreSQL** (central + per-tenant databases via `stancl/tenancy`)
-- **JWT** auth (`tymon/jwt-auth`) with two isolated guards: `api` (players) and `admin`
+- **JWT** auth (`tymon/jwt-auth`) with three isolated guards: `api` (tenant
+  players), `admin` (tenant admins) and `platform-admin` (central back-office)
 - **Inertia + Vue 3 + Tailwind v4** for the web UI
 - **Pest** for tests, **Pint** for formatting, **Larastan** for static analysis
 
@@ -28,7 +29,8 @@ composer setup
 
 # create the central DB (see .env DB_DATABASE) in Postgres first, then:
 php artisan migrate            # central connection
-php artisan db:seed            # creates a demo `merchant-wallet` tenant + domain
+php artisan db:seed            # creates a demo tenant (id `demo`, domain
+                               # demo.merchant-wallet.test) + a central platform admin
 ```
 
 Configuration lives in `.env` (copy from `.env.example`). Key values:
@@ -48,12 +50,15 @@ composer dev
 
 ## Multi-tenancy & ngrok
 
-- **Tenant resolution** is by the `X-Tenant` request header
+- **Tenant resolution** works two ways (spec §3.1): the web/Inertia tenant
+  routes resolve by **domain/subdomain** (`InitializeTenancyByDomain`), and the
+  API routes resolve by the **`X-Tenant` request header**
   (`InitializeTenancyByRequestData`). Every API call to a tenant route must send
   `X-Tenant: <tenant-id>`.
-- **Central DB** holds `tenants`, `domains`, `payment_transactions`,
-  `platform_admins`, and `sessions` only. **End users, admins, wallets,
-  transactions, and the ledger live in each tenant's own database** (spec §3.1).
+- **Central DB** holds only platform-level tables — `tenants`, `domains`,
+  `payment_transactions`, `platform_admins` — plus Laravel's own framework tables
+  (`sessions`, `cache`, `jobs`). **End users, admins, wallets, transactions, and
+  the ledger live in each tenant's own database** (spec §3.1).
 - The payment gateway calls back over the public internet, so during local
   development expose Herd through **ngrok** and point `PAYMENT_CALLBACK_URL` at it:
 
@@ -181,6 +186,69 @@ composer ci:check         # lint + format + phpstan + tests
 Tests run on an in-memory SQLite connection (`phpunit.xml`); production and
 local dev use PostgreSQL.
 
+### Test suite (78 tests)
+
+**Tenant isolation & resolution**
+
+| File | What it proves |
+|---|---|
+| `Feature/TenantIsolationTest.php` | Data written in one tenant DB is invisible from another — the core cross-tenant leak guarantee (spec §3.1). |
+| `Feature/TenantIdentificationTest.php` | Tenancy resolves both by full domain/subdomain (web) and by the `X-Tenant` header (API). |
+
+**Authentication & guard separation**
+
+| File | What it proves |
+|---|---|
+| `Feature/AuthGuardMatrixTest.php` | The full 4-case guard matrix: player/admin token × player/admin route (200s + both rejections) (spec §3.2). |
+| `Feature/AuthRouteSeparationTest.php` | Player and admin JWT route guards are separate route files with separate middleware. |
+| `Feature/AuthLoginTest.php` | Player and admin can each log in on their own guard; a player cannot use the admin login. |
+| `Feature/AuthSessionTest.php` | `me` returns the authenticated identity, is rejected without a token, and a real login issues a working token. |
+
+**Access control (spec §11 — spatie roles)**
+
+| File | What it proves |
+|---|---|
+| `Feature/AccessControlTest.php` | `tenant-admin` role reaches the back office, an admin without it is forbidden, and self-registration grants the `end-user` role. |
+
+**Money correctness (deposit / withdrawal / ledger)**
+
+| File | What it proves |
+|---|---|
+| `Integration/WithdrawalMoneyCorrectnessTest.php` | Fund-hold on create, rejection when over available balance, **double-spend prevention** on concurrent full-balance withdrawals, debit-on-complete, and hold-release-on-fail. |
+| `Integration/PaymentCallbackResolveTest.php` | A completed callback credits the wallet, a failed one leaves it untouched, and a replayed completed callback **does not double-credit** (idempotency). |
+| `Integration/ReconciliationTest.php` | The reconcile job resolves stale `pending` deposits from the status endpoint — credits if completed, marks failed if failed, skips if still pending. |
+| `Feature/DepositTest.php` | A successful deposit persists a pending transaction with the gateway payment id; a rejected one marks it failed (422); payment method is validated. |
+| `Feature/WalletSummaryTest.php` | Balance summary counts only successful totals, auto-creates a wallet, and requires auth. |
+
+**Input validation (Form Requests)**
+
+| File | What it proves |
+|---|---|
+| `Feature/ValidationTest.php` | Form Request rules reject bad input with 422 before any business logic runs — deposit/withdrawal amount (required, numeric, positive) and destination fields, and admin user create/update (required fields, email format, uniqueness incl. ignore-self, password length). |
+
+**Gateway integration (driver / DTO)**
+
+| File | What it proves |
+|---|---|
+| `Unit/PaymentGatewayDtoTest.php` | Gateway responses map correctly into DTOs (status check, pending, float balance, order success/failure shapes). |
+| `Unit/PaymentGatewayEndpointTest.php` | The gateway endpoint paths are stable. |
+
+**Back office & CRUD (spec §11)**
+
+| File | What it proves |
+|---|---|
+| `Feature/PlatformTenantTest.php` | Central BO lists tenants with per-tenant deposit/withdrawal totals, requires platform-admin auth, and validates tenant creation. |
+| `Feature/AdminDashboardTest.php` | Tenant dashboard returns tenant-wide payment counts, lists all user transactions, filters by type, and rejects unauthenticated access. |
+| `Feature/AdminUserManagementTest.php` | Tenant-admin user CRUD (list/create-with-wallet/update/delete), bank-list sync, and rejection for non-admins. |
+
+**Player features & bonus**
+
+| File | What it proves |
+|---|---|
+| `Feature/RegistrationTest.php` | Self-registration issues a token and rejects duplicate email / unconfirmed password. |
+| `Feature/TransactionFilteringTest.php` | Transaction list filters by type, status, both, and rejects an invalid status. |
+| `Feature/WithdrawRateLimitTest.php` | Withdrawals are throttled after the configured attempts (429) and the limit is per authenticated user. |
+
 ---
 
 ## Known issues / limitations
@@ -190,10 +258,22 @@ local dev use PostgreSQL.
   the double-spend test proves the *application-level* availability check.
   Row-lock serialization is exercised only against Postgres.
 - **Single currency.** The wallet model assumes one currency per user (`MYR`);
-  multi-currency wallets are out of scope.
-- **Back office (spec §11) is partial.** The access model
-  (`spatie/laravel-permission`) and central/tenant back-office screens are only
-  partially implemented; some admin dashboard endpoints are still stubs.
+  multi-currency wallets are out of scope. (The schema keeps a `currency` column
+  and a `(user_id, currency)` unique key, so this is an extension, not a rewrite.)
+- **Central tenant management is create / list / delete only.** The Central BO
+  (spec §11.1) can provision a tenant (database + domain + initial admin), list
+  tenants with per-tenant deposit/withdrawal totals, and delete a tenant, but
+  **edit and soft "deactivate" are not implemented** — there is no `active` flag
+  on tenants yet.
+- **Permission-cache scoping on tenant switch is not explicitly handled.**
+  `spatie/laravel-permission`'s registrar cache is not flushed on tenant switch
+  (the §11 gotcha). Tenancy's `CacheTenancyBootstrapper` is enabled, but the
+  permission cache is not separately scoped/flushed, so verify this before
+  relying on the back office across multiple tenants in one process.
+- **Callback signature scheme is gateway-specific.** Verification is
+  `hash_equals(md5(secret_key . order_id), token)` per the sandbox docs; a
+  different gateway would need a different `isValidToken` implementation (it sits
+  behind the driver, so this is a contained change).
 
 ---
 
