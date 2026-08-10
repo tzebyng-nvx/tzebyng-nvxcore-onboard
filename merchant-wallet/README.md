@@ -22,7 +22,7 @@ The app is served by [Laravel Herd](https://herd.laravel.com/) at
 `https://merchant-wallet.test`. PostgreSQL must be running locally.
 
 ```bash
-git clone <repo> && cd merchant-wallet
+git clone <repo> && cd tzebyng-nvxcore-onboard && cd merchant-wallet
 
 # 1. Create .env FIRST and fill in your Postgres credentials — composer setup
 #    creates the central DB and migrates, so it needs a working DB_PASSWORD.
