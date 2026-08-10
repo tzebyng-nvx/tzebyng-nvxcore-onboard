@@ -39,6 +39,8 @@ Route::middleware([
     $adminPages = [
         'login' => ['component' => 'admin.Login',     'title' => 'Admin Login',     'name' => 'login'],
         'dashboard' => ['component' => 'admin.Dashboard', 'title' => 'Admin Dashboard', 'name' => 'dashboard'],
+        'transactions' => ['component' => 'admin.Transactions', 'title' => 'Transactions', 'name' => 'transactions'],
+        'users' => ['component' => 'admin.Users', 'title' => 'User Management', 'name' => 'users'],
         'gateway-settings' => ['component' => 'admin.GatewaySettings', 'title' => 'Gateway Settings', 'name' => 'gateway-settings'],
     ];
 
