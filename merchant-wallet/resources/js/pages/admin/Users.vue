@@ -1,12 +1,19 @@
 <script setup lang="ts">
-import AdminShell from "@/components/AdminShell.vue";
-import Pagination from "@/components/Pagination.vue";
-import { DEFAULT_PAGE_SIZE } from "@/config/pagination";
-import { useTour } from "@/composables/useTour";
-import { adminAuthHeaders } from "@/utils/authHeaders";
-import { email, type Errors, maxLength, minLength, required, validate } from "@/utils/validation";
-import { Head, router } from "@inertiajs/vue3";
-import { onMounted, reactive, ref } from "vue";
+import { Head, router } from '@inertiajs/vue3';
+import { onMounted, reactive, ref } from 'vue';
+import AdminShell from '@/components/AdminShell.vue';
+import Pagination from '@/components/Pagination.vue';
+import { useTour } from '@/composables/useTour';
+import { DEFAULT_PAGE_SIZE } from '@/config/pagination';
+import { adminAuthHeaders } from '@/utils/authHeaders';
+import {
+    email,
+    maxLength,
+    minLength,
+    required,
+    validate,
+} from '@/utils/validation';
+import type { Errors } from '@/utils/validation';
 
 interface UserRow {
     id: string;
@@ -35,33 +42,37 @@ const formError = ref<string | null>(null);
 const fieldErrors = ref<Errors>({});
 const editingId = ref<string | null>(null);
 const showModal = ref(false);
-const form = reactive({ name: "", email: "", phone_number: "", password: "" });
+const form = reactive({ name: '', email: '', phone_number: '', password: '' });
 
 function validateForm(): boolean {
     const isEdit = editingId.value !== null;
     fieldErrors.value = validate(form, {
-        name: [required("Name is required."), maxLength(255)],
-        email: [required("Email is required."), email(), maxLength(255)],
-        phone_number: [required("Phone number is required."), maxLength(30)],
+        name: [required('Name is required.'), maxLength(255)],
+        email: [required('Email is required.'), email(), maxLength(255)],
+        phone_number: [required('Phone number is required.'), maxLength(30)],
         // Password is required on create; optional on edit (blank keeps current).
         password: isEdit
-            ? [minLength(6, "Password must be at least 6 characters.")]
-            : [required("Password is required."), minLength(6, "Password must be at least 6 characters.")],
+            ? [minLength(6, 'Password must be at least 6 characters.')]
+            : [
+                  required('Password is required.'),
+                  minLength(6, 'Password must be at least 6 characters.'),
+              ],
     });
+
     return Object.keys(fieldErrors.value).length === 0;
 }
 
 function closeModal() {
     showModal.value = false;
     editingId.value = null;
-    form.name = form.email = form.phone_number = form.password = "";
+    form.name = form.email = form.phone_number = form.password = '';
     formError.value = null;
     fieldErrors.value = {};
 }
 
 function openCreate() {
     editingId.value = null;
-    form.name = form.email = form.phone_number = form.password = "";
+    form.name = form.email = form.phone_number = form.password = '';
     formError.value = null;
     fieldErrors.value = {};
     showModal.value = true;
@@ -72,7 +83,7 @@ function editUser(u: UserRow) {
     form.name = u.name;
     form.email = u.email;
     form.phone_number = u.phone_number;
-    form.password = "";
+    form.password = '';
     formError.value = null;
     fieldErrors.value = {};
     showModal.value = true;
@@ -81,22 +92,33 @@ function editUser(u: UserRow) {
 async function loadUsers() {
     loading.value = true;
     loadError.value = null;
+
     try {
-        const res = await fetch(`/api/admin/users?page=${page.value}&per_page=${perPage.value}`, {
-            headers: adminAuthHeaders(),
-        });
+        const res = await fetch(
+            `/api/admin/users?page=${page.value}&per_page=${perPage.value}`,
+            {
+                headers: adminAuthHeaders(),
+            },
+        );
+
         if (res.status === 401) {
-            router.visit("/admin/login");
+            router.visit('/admin/login');
+
             return;
         }
+
         if (res.status === 403) {
             loadError.value = "You don't have access to user management.";
+
             return;
         }
+
         if (!res.ok) {
-            loadError.value = "Could not load users.";
+            loadError.value = 'Could not load users.';
+
             return;
         }
+
         const body = await res.json();
 
         // If we've paged past the end (e.g. after deleting the last row on a
@@ -104,6 +126,7 @@ async function loadUsers() {
         if (body.current_page > body.last_page && body.last_page >= 1) {
             page.value = body.last_page;
             await loadUsers();
+
             return;
         }
 
@@ -114,8 +137,8 @@ async function loadUsers() {
             per_page: body.per_page,
             total: body.total,
         };
-    } catch (e) {
-        loadError.value = "Something went wrong loading users.";
+    } catch {
+        loadError.value = 'Something went wrong loading users.';
     } finally {
         loading.value = false;
     }
@@ -140,68 +163,89 @@ async function submitForm() {
     saving.value = true;
     formError.value = null;
     const isEdit = editingId.value !== null;
-    const url = isEdit ? `/api/admin/users/${editingId.value}` : "/api/admin/users";
+    const url = isEdit
+        ? `/api/admin/users/${editingId.value}`
+        : '/api/admin/users';
     const payload: Record<string, string> = {
         name: form.name,
         email: form.email,
         phone_number: form.phone_number,
     };
-    if (form.password) payload.password = form.password;
+
+    if (form.password) {
+        payload.password = form.password;
+    }
 
     try {
         const res = await fetch(url, {
-            method: isEdit ? "PUT" : "POST",
+            method: isEdit ? 'PUT' : 'POST',
             headers: adminAuthHeaders(),
             body: JSON.stringify(payload),
         });
+
         if (res.status === 401) {
-            router.visit("/admin/login");
+            router.visit('/admin/login');
+
             return;
         }
+
         if (res.status === 422) {
             const body = await res.json();
-            formError.value = Object.values(body.errors ?? { m: ["Validation failed."] })
+            formError.value = Object.values(
+                body.errors ?? { m: ['Validation failed.'] },
+            )
                 .flat()
-                .join(" ");
+                .join(' ');
+
             return;
         }
+
         if (!res.ok) {
-            formError.value = "Could not save the user.";
+            formError.value = 'Could not save the user.';
+
             return;
         }
+
         closeModal();
         await loadUsers();
-    } catch (e) {
-        formError.value = "Something went wrong saving the user.";
+    } catch {
+        formError.value = 'Something went wrong saving the user.';
     } finally {
         saving.value = false;
     }
 }
 
 async function deleteUser(u: UserRow) {
-    if (!confirm(`Delete user "${u.email}"?`)) return;
+    if (!confirm(`Delete user "${u.email}"?`)) {
+        return;
+    }
+
     try {
         const res = await fetch(`/api/admin/users/${u.id}`, {
-            method: "DELETE",
+            method: 'DELETE',
             headers: adminAuthHeaders(),
         });
-        if (res.ok) await loadUsers();
-    } catch (e) { }
+
+        if (res.ok) {
+            await loadUsers();
+        }
+    } catch {}
 }
 
-useTour("admin-users", [
+useTour('admin-users', [
     {
         element: '[data-tour="add-user"]',
         popover: {
-            title: "Add a user",
-            description: "Create a new admin or wallet user for this tenant.",
+            title: 'Add a user',
+            description: 'Create a new admin or wallet user for this tenant.',
         },
     },
     {
         element: '[data-tour="user-table"]',
         popover: {
-            title: "User list",
-            description: "All users in this tenant. Edit or remove them from here.",
+            title: 'User list',
+            description:
+                'All users in this tenant. Edit or remove them from here.',
         },
     },
 ]);
@@ -210,18 +254,27 @@ onMounted(loadUsers);
 </script>
 
 <template>
-
     <Head title="User Management" />
 
     <AdminShell active="users" eyebrow="Back office" title="User management">
         <template #actions>
-            <button class="action-btn primary" data-tour="add-user" @click="openCreate">+ Add user</button>
+            <button
+                class="action-btn primary"
+                data-tour="add-user"
+                @click="openCreate"
+            >
+                + Add user
+            </button>
         </template>
 
         <section class="panel">
             <h2>Users</h2>
             <p v-if="loadError" class="form-error">{{ loadError }}</p>
-            <div v-else-if="!loading && users.length" class="table-wrap" data-tour="user-table">
+            <div
+                v-else-if="!loading && users.length"
+                class="table-wrap"
+                data-tour="user-table"
+            >
                 <table class="user-table">
                     <thead>
                         <tr>
@@ -235,14 +288,30 @@ onMounted(loadUsers);
                     <tbody>
                         <tr v-for="(u, i) in users" :key="u.id">
                             <td class="mono muted num">
-                                {{ ((meta?.current_page ?? 1) - 1) * (meta?.per_page ?? perPage) + i + 1 }}
+                                {{
+                                    ((meta?.current_page ?? 1) - 1) *
+                                        (meta?.per_page ?? perPage) +
+                                    i +
+                                    1
+                                }}
                             </td>
-                            <td class="truncate" :title="u.name">{{ u.name }}</td>
-                            <td class="mono truncate" :title="u.email">{{ u.email }}</td>
+                            <td class="truncate" :title="u.name">
+                                {{ u.name }}
+                            </td>
+                            <td class="mono truncate" :title="u.email">
+                                {{ u.email }}
+                            </td>
                             <td class="mono muted">{{ u.phone_number }}</td>
                             <td class="row-actions">
-                                <button class="link-btn" @click="editUser(u)">Edit</button>
-                                <button class="link-btn danger" @click="deleteUser(u)">Delete</button>
+                                <button class="link-btn" @click="editUser(u)">
+                                    Edit
+                                </button>
+                                <button
+                                    class="link-btn danger"
+                                    @click="deleteUser(u)"
+                                >
+                                    Delete
+                                </button>
                             </td>
                         </tr>
                     </tbody>
@@ -251,48 +320,125 @@ onMounted(loadUsers);
             <p v-else-if="!loading" class="empty-state">No users yet.</p>
             <p v-else class="empty-state">Loading users…</p>
 
-            <Pagination v-if="meta" :current-page="meta.current_page" :last-page="meta.last_page"
-                :total="meta.total" :per-page="meta.per_page" @change="changePage"
-                @per-page-change="changePerPage" />
+            <Pagination
+                v-if="meta"
+                :current-page="meta.current_page"
+                :last-page="meta.last_page"
+                :total="meta.total"
+                :per-page="meta.per_page"
+                @change="changePage"
+                @per-page-change="changePerPage"
+            />
         </section>
 
         <Teleport to="body">
-            <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
+            <div
+                v-if="showModal"
+                class="modal-overlay"
+                @click.self="closeModal"
+            >
                 <div class="modal" role="dialog" aria-modal="true">
                     <div class="modal-header">
-                        <h2>{{ editingId ? "Edit user" : "Add user" }}</h2>
-                        <button class="modal-close" type="button" aria-label="Close" @click="closeModal">×</button>
+                        <h2>{{ editingId ? 'Edit user' : 'Add user' }}</h2>
+                        <button
+                            class="modal-close"
+                            type="button"
+                            aria-label="Close"
+                            @click="closeModal"
+                        >
+                            ×
+                        </button>
                     </div>
-                    <form class="user-form" @submit.prevent="submitForm" novalidate>
+                    <form
+                        class="user-form"
+                        @submit.prevent="submitForm"
+                        novalidate
+                    >
                         <label>
                             <span>Name</span>
-                            <input v-model="form.name" placeholder="Name" :class="{ 'is-invalid': fieldErrors.name }" />
-                            <span v-if="fieldErrors.name" class="field-error">{{ fieldErrors.name }}</span>
+                            <input
+                                v-model="form.name"
+                                placeholder="Name"
+                                :class="{ 'is-invalid': fieldErrors.name }"
+                            />
+                            <span v-if="fieldErrors.name" class="field-error">{{
+                                fieldErrors.name
+                            }}</span>
                         </label>
                         <label>
                             <span>Email</span>
-                            <input v-model="form.email" type="email" placeholder="Email"
-                                :class="{ 'is-invalid': fieldErrors.email }" />
-                            <span v-if="fieldErrors.email" class="field-error">{{ fieldErrors.email }}</span>
+                            <input
+                                v-model="form.email"
+                                type="email"
+                                placeholder="Email"
+                                :class="{ 'is-invalid': fieldErrors.email }"
+                            />
+                            <span
+                                v-if="fieldErrors.email"
+                                class="field-error"
+                                >{{ fieldErrors.email }}</span
+                            >
                         </label>
                         <label>
                             <span>Phone</span>
-                            <input v-model="form.phone_number" placeholder="Phone"
-                                :class="{ 'is-invalid': fieldErrors.phone_number }" />
-                            <span v-if="fieldErrors.phone_number" class="field-error">{{ fieldErrors.phone_number }}</span>
+                            <input
+                                v-model="form.phone_number"
+                                placeholder="Phone"
+                                :class="{
+                                    'is-invalid': fieldErrors.phone_number,
+                                }"
+                            />
+                            <span
+                                v-if="fieldErrors.phone_number"
+                                class="field-error"
+                                >{{ fieldErrors.phone_number }}</span
+                            >
                         </label>
                         <label>
-                            <span>{{ editingId ? "New password (optional)" : "Password" }}</span>
-                            <input v-model="form.password" type="password"
-                                :placeholder="editingId ? 'Leave blank to keep current' : 'Password'"
-                                :class="{ 'is-invalid': fieldErrors.password }" />
-                            <span v-if="fieldErrors.password" class="field-error">{{ fieldErrors.password }}</span>
+                            <span>{{
+                                editingId
+                                    ? 'New password (optional)'
+                                    : 'Password'
+                            }}</span>
+                            <input
+                                v-model="form.password"
+                                type="password"
+                                :placeholder="
+                                    editingId
+                                        ? 'Leave blank to keep current'
+                                        : 'Password'
+                                "
+                                :class="{ 'is-invalid': fieldErrors.password }"
+                            />
+                            <span
+                                v-if="fieldErrors.password"
+                                class="field-error"
+                                >{{ fieldErrors.password }}</span
+                            >
                         </label>
-                        <p v-if="formError" class="form-error">{{ formError }}</p>
+                        <p v-if="formError" class="form-error">
+                            {{ formError }}
+                        </p>
                         <div class="form-actions">
-                            <button class="action-btn" type="button" @click="closeModal">Cancel</button>
-                            <button class="action-btn primary" :disabled="saving" type="submit">
-                                {{ saving ? "Saving…" : editingId ? "Update" : "Create" }}
+                            <button
+                                class="action-btn"
+                                type="button"
+                                @click="closeModal"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                class="action-btn primary"
+                                :disabled="saving"
+                                type="submit"
+                            >
+                                {{
+                                    saving
+                                        ? 'Saving…'
+                                        : editingId
+                                          ? 'Update'
+                                          : 'Create'
+                                }}
                             </button>
                         </div>
                     </form>
@@ -309,7 +455,7 @@ onMounted(loadUsers);
     border-radius: 12px;
     padding: 24px 28px;
     margin-bottom: 24px;
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
     color: #1b2430;
 }
 
@@ -377,7 +523,7 @@ onMounted(loadUsers);
     justify-content: center;
     padding: 20px;
     z-index: 50;
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
 }
 
 .modal {
@@ -431,7 +577,7 @@ onMounted(loadUsers);
 }
 
 .action-btn:disabled {
-    opacity: .6;
+    opacity: 0.6;
     cursor: default;
 }
 
@@ -454,7 +600,7 @@ onMounted(loadUsers);
 .user-table th {
     text-align: left;
     font-size: 11px;
-    letter-spacing: .06em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     color: #5b6570;
     padding: 8px 20px 8px 0;
@@ -481,7 +627,7 @@ onMounted(loadUsers);
 }
 
 .mono {
-    font-family: "JetBrains Mono", monospace;
+    font-family: 'JetBrains Mono', monospace;
 }
 
 .num {

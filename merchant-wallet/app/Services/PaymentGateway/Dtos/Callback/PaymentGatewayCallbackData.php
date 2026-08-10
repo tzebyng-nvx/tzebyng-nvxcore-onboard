@@ -29,6 +29,9 @@ readonly class PaymentGatewayCallbackDto
         public ?string $remarks = null,
     ) {}
 
+    /**
+     * @param array<string, mixed> $data
+     */
     public static function fromApi(array $data): self
     {
         return new self(

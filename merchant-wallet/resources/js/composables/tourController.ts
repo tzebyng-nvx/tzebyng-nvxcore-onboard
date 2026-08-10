@@ -1,4 +1,4 @@
-import { ref } from "vue";
+import { ref } from 'vue';
 
 /**
  * The start function for the tour registered by the page currently on screen.

@@ -1,36 +1,40 @@
 <script setup lang="ts">
-import { Head } from "@inertiajs/vue3";
-import { computed, ref } from "vue";
+import { Head } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 
-type Audience = "platform" | "tenant";
+type Audience = 'platform' | 'tenant';
 
-const audience = ref<Audience>("platform");
-const tenantName = ref("");
+const audience = ref<Audience>('platform');
+const tenantName = ref('');
 
 // Normalise to a valid subdomain label: lowercase, digits, and hyphens only.
 const normalisedTenant = computed(() =>
     tenantName.value
         .trim()
         .toLowerCase()
-        .replace(/[^a-z0-9-]/g, "")
+        .replace(/[^a-z0-9-]/g, ''),
 );
 
-const canContinue = computed(() =>
-    audience.value === "platform" || normalisedTenant.value.length > 0
+const canContinue = computed(
+    () => audience.value === 'platform' || normalisedTenant.value.length > 0,
 );
 
 const tenantPreview = computed(() => {
     const host = window.location.host; // includes port in dev, e.g. localhost:8000
+
     return normalisedTenant.value
         ? `${normalisedTenant.value}.${host}`
         : `<tenant>.${host}`;
 });
 
 function proceed() {
-    if (!canContinue.value) return;
+    if (!canContinue.value) {
+        return;
+    }
 
-    if (audience.value === "platform") {
-        window.location.assign("/login");
+    if (audience.value === 'platform') {
+        window.location.assign('/login');
+
         return;
     }
 
@@ -41,7 +45,6 @@ function proceed() {
 
 <template>
     <main class="page">
-
         <Head title="Merchant Platform" />
 
         <section class="hero-panel">
@@ -49,8 +52,8 @@ function proceed() {
                 <span class="eyebrow">Merchant Platform</span>
                 <h1>Where would you like to go?</h1>
                 <p class="description">
-                    This is the central entry point. Continue to the platform back office,
-                    or open a specific tenant workspace by name.
+                    This is the central entry point. Continue to the platform
+                    back office, or open a specific tenant workspace by name.
                 </p>
                 <ul class="feature-list">
                     <li>Platform-wide tenant management</li>
@@ -72,40 +75,68 @@ function proceed() {
                 <p class="subtitle">Select where you're headed to continue.</p>
 
                 <div class="choice-grid">
-                    <button type="button" class="choice" :class="{ 'is-selected': audience === 'platform' }"
-                        @click="audience = 'platform'">
+                    <button
+                        type="button"
+                        class="choice"
+                        :class="{ 'is-selected': audience === 'platform' }"
+                        @click="audience = 'platform'"
+                    >
                         <span class="choice-mark">▣</span>
                         <span class="choice-title">Platform administrator</span>
-                        <span class="choice-note">Central back office &amp; tenant management</span>
+                        <span class="choice-note"
+                            >Central back office &amp; tenant management</span
+                        >
                     </button>
 
-                    <button type="button" class="choice" :class="{ 'is-selected': audience === 'tenant' }"
-                        @click="audience = 'tenant'">
+                    <button
+                        type="button"
+                        class="choice"
+                        :class="{ 'is-selected': audience === 'tenant' }"
+                        @click="audience = 'tenant'"
+                    >
                         <span class="choice-mark">◈</span>
                         <span class="choice-title">Tenant workspace</span>
-                        <span class="choice-note">Admin &amp; wallet users of a tenant</span>
+                        <span class="choice-note"
+                            >Admin &amp; wallet users of a tenant</span
+                        >
                     </button>
                 </div>
 
                 <form @submit.prevent="proceed" novalidate>
                     <div v-if="audience === 'tenant'" class="field">
                         <label for="tenant">Tenant name</label>
-                        <input id="tenant" v-model="tenantName" type="text" autocomplete="off"
-                            placeholder="e.g. demo" @keyup.enter="proceed" />
-                        <p class="preview">You'll be taken to <code>{{ tenantPreview }}</code></p>
+                        <input
+                            id="tenant"
+                            v-model="tenantName"
+                            type="text"
+                            autocomplete="off"
+                            placeholder="e.g. demo"
+                            @keyup.enter="proceed"
+                        />
+                        <p class="preview">
+                            You'll be taken to <code>{{ tenantPreview }}</code>
+                        </p>
                     </div>
 
-                    <button class="submit-btn" :disabled="!canContinue" type="submit">
-                        {{ audience === 'platform' ? 'Continue to Platform' : 'Open tenant workspace' }}
+                    <button
+                        class="submit-btn"
+                        :disabled="!canContinue"
+                        type="submit"
+                    >
+                        {{
+                            audience === 'platform'
+                                ? 'Continue to Platform'
+                                : 'Open tenant workspace'
+                        }}
                     </button>
                 </form>
 
                 <div class="notice">
                     <strong>Not sure?</strong>
                     <p>
-                        Platform administrators manage every tenant. If you're a tenant admin
-                        or a wallet user, choose <em>Tenant workspace</em> and enter your
-                        tenant's name.
+                        Platform administrators manage every tenant. If you're a
+                        tenant admin or a wallet user, choose
+                        <em>Tenant workspace</em> and enter your tenant's name.
                     </p>
                 </div>
             </div>
@@ -133,7 +164,7 @@ function proceed() {
     max-width: 100%;
     overflow: hidden;
     background: var(--paper);
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
     color: var(--ink);
 }
 
@@ -153,7 +184,7 @@ function proceed() {
 }
 
 .eyebrow {
-    font-family: "JetBrains Mono", monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
@@ -190,7 +221,7 @@ function proceed() {
 }
 
 .feature-list li::before {
-    content: "◆";
+    content: '◆';
     position: absolute;
     left: 0;
     color: var(--signal);
@@ -227,7 +258,7 @@ function proceed() {
 }
 
 .brand-name {
-    font-family: "JetBrains Mono", monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 13px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -236,7 +267,7 @@ function proceed() {
 
 .badge {
     display: inline-block;
-    font-family: "JetBrains Mono", monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -279,7 +310,9 @@ function proceed() {
     border-radius: 10px;
     background: white;
     cursor: pointer;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
 }
 
 .choice:hover {
@@ -293,7 +326,7 @@ function proceed() {
 
 .choice-mark {
     grid-row: 1 / span 2;
-    font-family: "JetBrains Mono", monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 18px;
     color: var(--signal);
 }
@@ -322,7 +355,7 @@ label {
     color: var(--ink);
 }
 
-input[type="text"] {
+input[type='text'] {
     width: 100%;
     padding: 11px 12px;
     border: 1px solid var(--hairline);
@@ -333,7 +366,7 @@ input[type="text"] {
     color: var(--ink);
 }
 
-input[type="text"]:focus {
+input[type='text']:focus {
     outline: 2px solid var(--signal);
     outline-offset: 1px;
     border-color: var(--signal);
@@ -347,7 +380,7 @@ input[type="text"]:focus {
 }
 
 .preview code {
-    font-family: "JetBrains Mono", monospace;
+    font-family: 'JetBrains Mono', monospace;
     background: var(--hairline);
     padding: 1px 6px;
     border-radius: 4px;

@@ -1,6 +1,6 @@
 import { createInertiaApp, router } from '@inertiajs/vue3';
-import { DefineComponent } from 'vue';
-import { resolvePageComponent } from "laravel-vite-plugin/inertia-helpers"
+import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
+import type { DefineComponent } from 'vue';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -18,6 +18,7 @@ function currentTenant(): string | null {
 // Runs before every Inertia visit (page navigation, form.post, etc.)
 router.on('before', (event) => {
     const tenant = currentTenant();
+
     if (tenant) {
         event.detail.visit.headers['X-Tenant'] = tenant;
     }
@@ -27,7 +28,7 @@ createInertiaApp({
     resolve: (name: string) =>
         resolvePageComponent(
             `./pages/${name.replace('.', '/')}.vue`,
-            import.meta.glob("./pages/**/*.vue")
+            import.meta.glob('./pages/**/*.vue'),
         ) as Promise<DefineComponent>,
     title: (title) => (title ? `${title} - ${appName}` : appName),
     progress: {

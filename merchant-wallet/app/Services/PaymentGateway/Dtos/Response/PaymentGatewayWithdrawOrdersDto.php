@@ -12,10 +12,13 @@ readonly class PaymentGatewayWithdrawOrdersDto
         public ?string $payment_id
     ) {}
 
+    /**
+     * @param array<string, mixed> $data
+     */
     public static function fromApi(array $data): self
     {
         return new self(
-            status: (bool) $data['status'] ?? false,
+            status: (bool) ($data['status'] ?? false),
             payment_id: $data['payment_id'] ?? null,
             message: $data['message'] ?? null,
         );

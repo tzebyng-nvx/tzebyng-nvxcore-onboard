@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import AdminShell from "@/components/AdminShell.vue";
-import { useTour } from "@/composables/useTour";
-import { adminAuthHeaders } from "@/utils/authHeaders";
-import { Head, router } from "@inertiajs/vue3";
-import { onMounted, ref } from "vue";
+import { Head, router } from '@inertiajs/vue3';
+import { onMounted, ref } from 'vue';
+import AdminShell from '@/components/AdminShell.vue';
+import { useTour } from '@/composables/useTour';
+import { adminAuthHeaders } from '@/utils/authHeaders';
 
 interface GeneralInfo {
     total_payments: number;
@@ -25,28 +25,31 @@ async function loadDashboard() {
     loadError.value = null;
 
     try {
-        const infoRes = await fetch("/api/admin/payments/general-info", {
+        const infoRes = await fetch('/api/admin/payments/general-info', {
             headers: adminAuthHeaders(),
         });
 
         if (infoRes.status === 401) {
-            router.visit("/admin/login");
+            router.visit('/admin/login');
+
             return;
         }
 
         if (infoRes.status === 403) {
             loadError.value = "You don't have access to this area.";
+
             return;
         }
 
         if (!infoRes.ok) {
-            loadError.value = "Could not load admin data right now.";
+            loadError.value = 'Could not load admin data right now.';
+
             return;
         }
 
         info.value = await infoRes.json();
-    } catch (e) {
-        loadError.value = "Something went wrong loading the admin dashboard.";
+    } catch {
+        loadError.value = 'Something went wrong loading the admin dashboard.';
     } finally {
         loading.value = false;
     }
@@ -57,56 +60,61 @@ async function loadFloatBalance() {
     floatError.value = null;
 
     try {
-        const res = await fetch("/api/admin/payments/float-balance", {
+        const res = await fetch('/api/admin/payments/float-balance', {
             headers: adminAuthHeaders(),
         });
 
         if (res.status === 401) {
-            router.visit("/admin/login");
+            router.visit('/admin/login');
+
             return;
         }
 
         if (!res.ok) {
-            floatError.value = "Unavailable";
+            floatError.value = 'Unavailable';
+
             return;
         }
 
         const data = await res.json();
         floatBalance.value = data.balance ?? null;
-    } catch (e) {
-        floatError.value = "Unavailable";
+    } catch {
+        floatError.value = 'Unavailable';
     } finally {
         floatLoading.value = false;
     }
 }
 
-useTour("admin-dashboard", [
+useTour('admin-dashboard', [
     {
-        element: ".sidebar .nav",
+        element: '.sidebar .nav',
         popover: {
-            title: "Navigation",
-            description: "Jump between Overview, Transactions, Users and Gateway settings from here.",
+            title: 'Navigation',
+            description:
+                'Jump between Overview, Transactions, Users and Gateway settings from here.',
         },
     },
     {
         element: '[data-tour="float"]',
         popover: {
-            title: "Merchant float balance",
-            description: "The live balance held with your payment gateway.",
+            title: 'Merchant float balance',
+            description: 'The live balance held with your payment gateway.',
         },
     },
     {
         element: '[data-tour="stats"]',
         popover: {
-            title: "At a glance",
-            description: "Totals for payments, pending and successful transactions, plus your default currency.",
+            title: 'At a glance',
+            description:
+                'Totals for payments, pending and successful transactions, plus your default currency.',
         },
     },
     {
         element: '[data-tour="txn-link"]',
         popover: {
-            title: "Transactions",
-            description: "Open the full transactions page to browse and filter every deposit and withdrawal.",
+            title: 'Transactions',
+            description:
+                'Open the full transactions page to browse and filter every deposit and withdrawal.',
         },
     },
 ]);
@@ -118,13 +126,16 @@ onMounted(() => {
 </script>
 
 <template>
-
     <Head title="Admin Dashboard" />
 
     <AdminShell active="overview" eyebrow="Back office" title="Dashboard">
         <template #actions>
-            <button class="refresh-btn" :disabled="floatLoading" @click="loadFloatBalance">
-                {{ floatLoading ? "Refreshing…" : "↻ Refresh" }}
+            <button
+                class="refresh-btn"
+                :disabled="floatLoading"
+                @click="loadFloatBalance"
+            >
+                {{ floatLoading ? 'Refreshing…' : '↻ Refresh' }}
             </button>
         </template>
 
@@ -133,12 +144,15 @@ onMounted(() => {
                 <span class="eyebrow">Gateway merchant float balance</span>
                 <div v-if="floatLoading" class="float-amount is-loading">—</div>
                 <div v-else-if="floatBalance !== null" class="float-amount">
-                    {{ info?.currency ?? "MYR" }} {{ Number(floatBalance).toFixed(2) }}
+                    {{ info?.currency ?? 'MYR' }}
+                    {{ Number(floatBalance).toFixed(2) }}
                 </div>
                 <div v-else class="float-amount is-error">
-                    {{ floatError ?? "Unavailable" }}
+                    {{ floatError ?? 'Unavailable' }}
                 </div>
-                <span class="float-note">Live balance held with the payment gateway.</span>
+                <span class="float-note"
+                    >Live balance held with the payment gateway.</span
+                >
             </div>
         </section>
 
@@ -146,35 +160,47 @@ onMounted(() => {
             <div class="stat-card">
                 <span class="eyebrow">Total transactions</span>
                 <div class="stat-value" :class="{ 'is-loading': loading }">
-                    {{ loading ? "—" : info?.total_payments ?? 0 }}
+                    {{ loading ? '—' : (info?.total_payments ?? 0) }}
                 </div>
             </div>
             <div class="stat-card">
                 <span class="eyebrow">Pending</span>
-                <div class="stat-value is-pending" :class="{ 'is-loading': loading }">
-                    {{ loading ? "—" : info?.total_pending ?? 0 }}
+                <div
+                    class="stat-value is-pending"
+                    :class="{ 'is-loading': loading }"
+                >
+                    {{ loading ? '—' : (info?.total_pending ?? 0) }}
                 </div>
             </div>
             <div class="stat-card">
                 <span class="eyebrow">Successful</span>
-                <div class="stat-value is-success" :class="{ 'is-loading': loading }">
-                    {{ loading ? "—" : info?.total_successful ?? 0 }}
+                <div
+                    class="stat-value is-success"
+                    :class="{ 'is-loading': loading }"
+                >
+                    {{ loading ? '—' : (info?.total_successful ?? 0) }}
                 </div>
             </div>
             <div class="stat-card">
                 <span class="eyebrow">Default currency</span>
                 <div class="stat-value mono" :class="{ 'is-loading': loading }">
-                    {{ loading ? "—" : info?.currency ?? "—" }}
+                    {{ loading ? '—' : (info?.currency ?? '—') }}
                 </div>
             </div>
         </section>
 
         <p v-if="loadError" class="load-error">{{ loadError }}</p>
 
-        <section class="link-card" data-tour="txn-link" @click="router.visit('/admin/transactions')">
+        <section
+            class="link-card"
+            data-tour="txn-link"
+            @click="router.visit('/admin/transactions')"
+        >
             <div>
                 <h2>Transactions</h2>
-                <p class="link-note">Browse, filter, and review every deposit and withdrawal.</p>
+                <p class="link-note">
+                    Browse, filter, and review every deposit and withdrawal.
+                </p>
             </div>
             <span class="link-cta">View all →</span>
         </section>
@@ -203,16 +229,16 @@ onMounted(() => {
     position: relative;
     overflow: hidden;
     margin-bottom: 24px;
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
 }
 
 .float-card::after {
-    content: "◆";
+    content: '◆';
     position: absolute;
     right: 8px;
     top: -24px;
     font-size: 150px;
-    color: rgba(36, 84, 255, 0.10);
+    color: rgba(36, 84, 255, 0.1);
     pointer-events: none;
 }
 
@@ -221,7 +247,7 @@ onMounted(() => {
 }
 
 .float-amount {
-    font-family: "JetBrains Mono", monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 38px;
     font-weight: 600;
     letter-spacing: -0.01em;
@@ -278,7 +304,7 @@ onMounted(() => {
 }
 
 .eyebrow {
-    font-family: "JetBrains Mono", monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -286,7 +312,7 @@ onMounted(() => {
 }
 
 .stat-value {
-    font-family: "JetBrains Mono", monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 20px;
     font-weight: 600;
     margin-top: 6px;
@@ -316,12 +342,14 @@ onMounted(() => {
     padding: 22px 28px;
     background: white;
     cursor: pointer;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
 }
 
 .link-card:hover {
     border-color: #2454ff;
-    box-shadow: 0 0 0 3px rgba(36, 84, 255, 0.10);
+    box-shadow: 0 0 0 3px rgba(36, 84, 255, 0.1);
 }
 
 .link-card h2 {

@@ -1,6 +1,6 @@
-import { readonly, ref } from "vue";
+import { readonly, ref } from 'vue';
 
-export type ToastType = "success" | "error" | "info";
+export type ToastType = 'success' | 'error' | 'info';
 
 export interface Toast {
     id: number;
@@ -16,7 +16,11 @@ let nextId = 0;
  * the tree renders the queue; any component can push to it via `showToast`.
  */
 export function useToast() {
-    function showToast(message: string, type: ToastType = "info", duration = 3500) {
+    function showToast(
+        message: string,
+        type: ToastType = 'info',
+        duration = 3500,
+    ) {
         const id = nextId++;
         toasts.value.push({ id, message, type });
 

@@ -9,6 +9,9 @@ readonly class PaymentGatewayBalanceRequestDto
         public string $currency
     ) {}
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         return [

@@ -12,6 +12,9 @@ readonly class PaymentGatewayCheckStatusDto
         public string $currency,
     ) {}
 
+    /**
+     * @param array<string, mixed> $data
+     */
     public static function fromApi(array $data): self
     {
         return new self(

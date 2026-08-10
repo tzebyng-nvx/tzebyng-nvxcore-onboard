@@ -9,6 +9,9 @@ readonly class PaymentGatewayCheckStatusRequestDto
         public string $id,
     ) {}
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         return [

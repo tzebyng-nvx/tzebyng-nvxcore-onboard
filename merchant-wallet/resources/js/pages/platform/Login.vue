@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { Head, router, useForm } from "@inertiajs/vue3";
-import { ref } from "vue";
+import { router, useForm } from '@inertiajs/vue3';
+import { ref } from 'vue';
 
 const form = useForm({
-    email: "",
-    password: "",
+    email: '',
+    password: '',
 });
 
 const submitting = ref(false);
@@ -21,11 +21,11 @@ async function submit() {
     authError.value = null;
 
     try {
-        const response = await fetch("api/platform/login", {
-            method: "POST",
+        const response = await fetch('api/platform/login', {
+            method: 'POST',
             headers: {
-                "Content-Type": "application/json",
-                Accept: "application/json",
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
             },
             body: JSON.stringify({
                 email: form.email,
@@ -35,7 +35,8 @@ async function submit() {
 
         if (!response.ok) {
             const body = await response.json().catch(() => null);
-            authError.value = body?.message ?? "Invalid email or password.";
+            authError.value = body?.message ?? 'Invalid email or password.';
+
             return;
         }
 
@@ -43,16 +44,19 @@ async function submit() {
 
         // Store token + when it expires (absolute timestamp, easier to check later).
         const expiresAt = Date.now() + data.expires_in * 1000;
-        localStorage.setItem("access_token", data.access_token);
-        localStorage.setItem("token_type", data.token_type);
-        localStorage.setItem("expires_at", String(expiresAt));
+        localStorage.setItem('access_token', data.access_token);
+        localStorage.setItem('token_type', data.token_type);
+        localStorage.setItem('expires_at', String(expiresAt));
 
-        router.visit("dashboard");
+        router.visit('dashboard');
     } catch (e) {
-        authError.value = e instanceof Error ? e.message : "Something went wrong. Please try again.";
+        authError.value =
+            e instanceof Error
+                ? e.message
+                : 'Something went wrong. Please try again.';
     } finally {
         submitting.value = false;
-        form.password = "";
+        form.password = '';
     }
 }
 </script>
@@ -66,9 +70,9 @@ async function submit() {
                 <h1>Platform Administration</h1>
 
                 <p class="description">
-                    Access the central back office to manage tenants, monitor payment
-                    processing, review system activity, and configure platform-wide
-                    settings.
+                    Access the central back office to manage tenants, monitor
+                    payment processing, review system activity, and configure
+                    platform-wide settings.
                 </p>
 
                 <ul class="feature-list">
@@ -99,8 +103,14 @@ async function submit() {
                     <div class="field">
                         <label for="email">Administrator Email</label>
 
-                        <input id="email" v-model="form.email" type="email" autocomplete="username" required
-                            autofocus />
+                        <input
+                            id="email"
+                            v-model="form.email"
+                            type="email"
+                            autocomplete="username"
+                            required
+                            autofocus
+                        />
 
                         <p v-if="form.errors.email" class="error">
                             {{ form.errors.email }}
@@ -116,8 +126,13 @@ async function submit() {
                             </a>
                         </div>
 
-                        <input id="password" v-model="form.password" type="password" autocomplete="current-password"
-                            required />
+                        <input
+                            id="password"
+                            v-model="form.password"
+                            type="password"
+                            autocomplete="current-password"
+                            required
+                        />
 
                         <p v-if="form.errors.password" class="error">
                             {{ form.errors.password }}
@@ -128,8 +143,14 @@ async function submit() {
                         {{ authError }}
                     </p>
 
-                    <button class="submit-btn" :disabled="submitting" type="submit">
-                        {{ submitting ? "Signing in..." : "Sign in to Platform" }}
+                    <button
+                        class="submit-btn"
+                        :disabled="submitting"
+                        type="submit"
+                    >
+                        {{
+                            submitting ? 'Signing in...' : 'Sign in to Platform'
+                        }}
                     </button>
                 </form>
 
@@ -137,9 +158,9 @@ async function submit() {
                     <strong>Restricted Area</strong>
 
                     <p>
-                        This portal is reserved for platform administrators only. Tenant
-                        administrators and wallet users must log in through their respective
-                        tenant domains.
+                        This portal is reserved for platform administrators
+                        only. Tenant administrators and wallet users must log in
+                        through their respective tenant domains.
                     </p>
                 </div>
             </div>
@@ -158,7 +179,7 @@ async function submit() {
     height: 100vh;
     overflow: hidden;
     background: var(--paper);
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
     color: var(--ink);
 }
 
@@ -178,7 +199,7 @@ async function submit() {
 }
 
 .eyebrow {
-    font-family: "JetBrains Mono", monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
@@ -215,7 +236,7 @@ async function submit() {
 }
 
 .feature-list li::before {
-    content: "◆";
+    content: '◆';
     position: absolute;
     left: 0;
     color: var(--signal);
@@ -249,7 +270,7 @@ async function submit() {
 }
 
 .brand-name {
-    font-family: "JetBrains Mono", monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 13px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -258,7 +279,7 @@ async function submit() {
 
 .badge {
     display: inline-block;
-    font-family: "JetBrains Mono", monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -300,8 +321,8 @@ label {
     color: var(--ink);
 }
 
-input[type="email"],
-input[type="password"] {
+input[type='email'],
+input[type='password'] {
     width: 100%;
     padding: 11px 12px;
     border: 1px solid var(--hairline);
@@ -312,8 +333,8 @@ input[type="password"] {
     color: var(--ink);
 }
 
-input[type="email"]:focus,
-input[type="password"]:focus {
+input[type='email']:focus,
+input[type='password']:focus {
     outline: 2px solid var(--signal);
     outline-offset: 1px;
     border-color: var(--signal);

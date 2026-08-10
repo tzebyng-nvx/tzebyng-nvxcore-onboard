@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { PAGE_SIZE_OPTIONS } from "@/config/pagination";
-import { computed } from "vue";
+import { computed } from 'vue';
+import { PAGE_SIZE_OPTIONS } from '@/config/pagination';
 
 const props = withDefaults(
     defineProps<{
@@ -12,28 +12,31 @@ const props = withDefaults(
     }>(),
     {
         perPageOptions: () => PAGE_SIZE_OPTIONS,
-    }
+    },
 );
 
 const emit = defineEmits<{
-    (e: "change", page: number): void;
-    (e: "perPageChange", perPage: number): void;
+    (e: 'change', page: number): void;
+    (e: 'perPageChange', perPage: number): void;
 }>();
 
 function onPerPageChange(event: Event) {
     const value = Number((event.target as HTMLSelectElement).value);
-    emit("perPageChange", value);
+    emit('perPageChange', value);
 }
 
 const rangeLabel = computed(() => {
     if (props.total === undefined || props.perPage === undefined) {
         return null;
     }
+
     if (props.total === 0) {
-        return "0 results";
+        return '0 results';
     }
+
     const from = (props.currentPage - 1) * props.perPage + 1;
     const to = Math.min(props.currentPage * props.perPage, props.total);
+
     return `${from}–${to} of ${props.total}`;
 });
 
@@ -41,7 +44,8 @@ function go(page: number) {
     if (page < 1 || page > props.lastPage || page === props.currentPage) {
         return;
     }
-    emit("change", page);
+
+    emit('change', page);
 }
 </script>
 
@@ -51,20 +55,36 @@ function go(page: number) {
             <label v-if="perPage !== undefined" class="per-page">
                 <span class="muted">Rows</span>
                 <select :value="perPage" @change="onPerPageChange">
-                    <option v-for="option in perPageOptions" :key="option" :value="option">
+                    <option
+                        v-for="option in perPageOptions"
+                        :key="option"
+                        :value="option"
+                    >
                         {{ option }}
                     </option>
                 </select>
             </label>
-            <span v-if="rangeLabel" class="page-range muted">{{ rangeLabel }}</span>
+            <span v-if="rangeLabel" class="page-range muted">{{
+                rangeLabel
+            }}</span>
         </div>
 
         <div class="page-controls">
-            <button class="page-btn" :disabled="currentPage === 1" @click="go(currentPage - 1)">
+            <button
+                class="page-btn"
+                :disabled="currentPage === 1"
+                @click="go(currentPage - 1)"
+            >
                 ← Previous
             </button>
-            <span class="page-info muted">Page {{ currentPage }} / {{ lastPage }}</span>
-            <button class="page-btn" :disabled="currentPage === lastPage" @click="go(currentPage + 1)">
+            <span class="page-info muted"
+                >Page {{ currentPage }} / {{ lastPage }}</span
+            >
+            <button
+                class="page-btn"
+                :disabled="currentPage === lastPage"
+                @click="go(currentPage + 1)"
+            >
                 Next →
             </button>
         </div>
@@ -79,7 +99,7 @@ function go(page: number) {
     gap: 12px;
     flex-wrap: wrap;
     margin-top: 18px;
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
 }
 
 .page-left {

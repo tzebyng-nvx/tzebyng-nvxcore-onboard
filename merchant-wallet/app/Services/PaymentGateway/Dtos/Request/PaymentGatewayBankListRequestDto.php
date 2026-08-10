@@ -9,6 +9,9 @@ readonly class PaymentGatewayBankListRequestDto
         public ?string $currency = null,
     ) {}
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         return [

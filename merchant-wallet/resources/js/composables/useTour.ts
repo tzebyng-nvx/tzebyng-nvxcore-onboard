@@ -1,7 +1,8 @@
-import { driver, type DriveStep } from "driver.js";
-import "driver.js/dist/driver.css";
-import { onMounted, onUnmounted } from "vue";
-import { activeTour } from "./tourController";
+import { driver } from 'driver.js';
+import type { DriveStep } from 'driver.js';
+import 'driver.js/dist/driver.css';
+import { onMounted, onUnmounted } from 'vue';
+import { activeTour } from './tourController';
 
 interface TourOptions {
     /** Auto-run on the first visit to this tour. Defaults to true. */
@@ -21,7 +22,11 @@ interface TourOptions {
  * Steps whose target element is missing at run time are skipped gracefully by
  * driver.js, so pages with async data still tour cleanly.
  */
-export function useTour(key: string, steps: DriveStep[], options: TourOptions = {}) {
+export function useTour(
+    key: string,
+    steps: DriveStep[],
+    options: TourOptions = {},
+) {
     const { auto = true, autoDelay = 600 } = options;
     const storageKey = `tour_seen_${key}`;
 
@@ -29,14 +34,16 @@ export function useTour(key: string, steps: DriveStep[], options: TourOptions = 
         driver({
             showProgress: true,
             allowClose: true,
-            nextBtnText: "Next",
-            prevBtnText: "Back",
-            doneBtnText: "Done",
+            nextBtnText: 'Next',
+            prevBtnText: 'Back',
+            doneBtnText: 'Done',
             steps: steps.filter((step) => {
                 const el = step.element;
-                if (!el || typeof el !== "string") {
+
+                if (!el || typeof el !== 'string') {
                     return true;
                 }
+
                 return document.querySelector(el) !== null;
             }),
         }).drive();
@@ -46,7 +53,7 @@ export function useTour(key: string, steps: DriveStep[], options: TourOptions = 
         activeTour.value = start;
 
         if (auto && !localStorage.getItem(storageKey)) {
-            localStorage.setItem(storageKey, "1");
+            localStorage.setItem(storageKey, '1');
             window.setTimeout(start, autoDelay);
         }
     });

@@ -9,10 +9,13 @@ readonly class PaymentGatewayBalanceDto
         public string $balance,
     ) {}
 
+    /**
+     * @param array<string, mixed> $data
+     */
     public static function fromApi(array $data): self
     {
         return new self(
-            status: (bool) $data['status'] ?? false,
+            status: (bool) ($data['status'] ?? false),
             balance: $data['balance'],
         );
     }

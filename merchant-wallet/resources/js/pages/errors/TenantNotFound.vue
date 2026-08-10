@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head } from "@inertiajs/vue3";
+import { Head } from '@inertiajs/vue3';
 
 defineProps<{
     host: string;
@@ -9,7 +9,6 @@ defineProps<{
 
 <template>
     <main class="page">
-
         <Head title="Tenant not found" />
 
         <section class="card">
@@ -17,14 +16,22 @@ defineProps<{
             <h1>This workspace doesn't exist</h1>
             <p class="lead">
                 We couldn't find a tenant for
-                <code>{{ host }}</code>.
-                It may have been removed, or the address may be mistyped.
+                <code>{{ host }}</code
+                >. It may have been removed, or the address may be mistyped.
             </p>
 
             <ul class="hints">
-                <li>Double-check the spelling of the workspace name in the address.</li>
-                <li>If the tenant was recently created, give it a moment and retry.</li>
-                <li>Otherwise, head back to the central entry point to continue.</li>
+                <li>
+                    Double-check the spelling of the workspace name in the
+                    address.
+                </li>
+                <li>
+                    If the tenant was recently created, give it a moment and
+                    retry.
+                </li>
+                <li>
+                    Otherwise, head back to the central entry point to continue.
+                </li>
             </ul>
 
             <div class="actions">
@@ -52,7 +59,7 @@ defineProps<{
     min-height: 100vh;
     padding: 24px;
     background: var(--paper);
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
     color: var(--ink);
 }
 
@@ -67,7 +74,7 @@ defineProps<{
 
 .badge {
     display: inline-block;
-    font-family: "JetBrains Mono", monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -94,7 +101,7 @@ h1 {
 }
 
 .lead code {
-    font-family: "JetBrains Mono", monospace;
+    font-family: 'JetBrains Mono', monospace;
     background: var(--hairline);
     padding: 1px 6px;
     border-radius: 4px;
@@ -118,7 +125,7 @@ h1 {
 }
 
 .hints li::before {
-    content: "◆";
+    content: '◆';
     position: absolute;
     left: 0;
     top: 2px;

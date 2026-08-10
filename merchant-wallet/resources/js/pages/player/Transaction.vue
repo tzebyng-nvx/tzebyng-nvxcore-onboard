@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import PlayerShell from "@/components/PlayerShell.vue";
-import Pagination from "@/components/Pagination.vue";
-import { DEFAULT_PAGE_SIZE } from "@/config/pagination";
-import { useTour } from "@/composables/useTour";
-import { Head, router } from "@inertiajs/vue3";
-import { onMounted, ref } from "vue";
+import { Head, router } from '@inertiajs/vue3';
+import { onMounted, ref } from 'vue';
+import Pagination from '@/components/Pagination.vue';
+import PlayerShell from '@/components/PlayerShell.vue';
+import { useTour } from '@/composables/useTour';
+import { DEFAULT_PAGE_SIZE } from '@/config/pagination';
 
 interface Transaction {
     id: string;
@@ -30,20 +30,20 @@ const loading = ref(true);
 const loadError = ref<string | null>(null);
 
 const filters = ref({
-    type: "",
-    status: "",
+    type: '',
+    status: '',
     page: 1,
     per_page: DEFAULT_PAGE_SIZE,
 });
 
 function authHeaders(): HeadersInit {
-    const token = localStorage.getItem("access_token");
-    const tokenType = localStorage.getItem("token_type") ?? "Bearer";
+    const token = localStorage.getItem('access_token');
+    const tokenType = localStorage.getItem('token_type') ?? 'Bearer';
 
     return {
-        Accept: "application/json",
+        Accept: 'application/json',
         Authorization: `${tokenType} ${token}`,
-        "X-Tenant": window.location.hostname.split(".")[0],
+        'X-Tenant': window.location.hostname.split('.')[0],
     };
 }
 
@@ -62,26 +62,24 @@ async function loadTransactions() {
     try {
         const params = new URLSearchParams();
 
-        params.append("page", String(filters.value.page));
-        params.append("per_page", String(filters.value.per_page));
+        params.append('page', String(filters.value.page));
+        params.append('per_page', String(filters.value.per_page));
 
         if (filters.value.type) {
-            params.append("type", filters.value.type);
+            params.append('type', filters.value.type);
         }
 
         if (filters.value.status) {
-            params.append("status", filters.value.status);
+            params.append('status', filters.value.status);
         }
 
-        const response = await fetch(
-            `/api/transactions?${params.toString()}`,
-            {
-                headers: authHeaders(),
-            }
-        );
+        const response = await fetch(`/api/transactions?${params.toString()}`, {
+            headers: authHeaders(),
+        });
 
         if (response.status === 401) {
-            router.visit("/login");
+            router.visit('/login');
+
             return;
         }
 
@@ -100,20 +98,18 @@ async function loadTransactions() {
             total: data.total,
         };
     } catch {
-        loadError.value =
-            "Unable to load transactions. Please try again.";
+        loadError.value = 'Unable to load transactions. Please try again.';
     } finally {
         loading.value = false;
     }
 }
 
 function changePage(page: number) {
-    if (!pagination.value) return;
+    if (!pagination.value) {
+        return;
+    }
 
-    if (
-        page < 1 ||
-        page > pagination.value.last_page
-    ) {
+    if (page < 1 || page > pagination.value.last_page) {
         return;
     }
 
@@ -133,19 +129,19 @@ function applyFilter() {
     loadTransactions();
 }
 
-useTour("player-transaction", [
+useTour('player-transaction', [
     {
         element: '[data-tour="txn-filters"]',
         popover: {
-            title: "Filter your history",
-            description: "Filter your transactions by type and status.",
+            title: 'Filter your history',
+            description: 'Filter your transactions by type and status.',
         },
     },
     {
         element: '[data-tour="txn-list"]',
         popover: {
-            title: "Your transactions",
-            description: "A full record of your deposits and withdrawals.",
+            title: 'Your transactions',
+            description: 'A full record of your deposits and withdrawals.',
         },
     },
 ]);
@@ -156,13 +152,16 @@ onMounted(() => {
 </script>
 
 <template>
-
     <Head title="Transactions" />
 
     <PlayerShell active="transaction" eyebrow="Wallet" title="Transactions">
         <template #actions>
-            <button class="refresh-btn" :disabled="loading" @click="loadTransactions">
-                {{ loading ? "Refreshing…" : "↻ Refresh" }}
+            <button
+                class="refresh-btn"
+                :disabled="loading"
+                @click="loadTransactions"
+            >
+                {{ loading ? 'Refreshing…' : '↻ Refresh' }}
             </button>
         </template>
 
@@ -188,13 +187,19 @@ onMounted(() => {
                 </div>
 
                 <span v-if="pagination" class="result-count muted">
-                    {{ pagination.total }} result{{ pagination.total === 1 ? '' : 's' }}
+                    {{ pagination.total }} result{{
+                        pagination.total === 1 ? '' : 's'
+                    }}
                 </span>
             </div>
 
             <p v-if="loadError" class="error">{{ loadError }}</p>
 
-            <div v-else-if="!loading && transactions.length" class="table-wrap" data-tour="txn-list">
+            <div
+                v-else-if="!loading && transactions.length"
+                class="table-wrap"
+                data-tour="txn-list"
+            >
                 <table class="txn-table">
                     <thead>
                         <tr>
@@ -210,22 +215,50 @@ onMounted(() => {
                     <tbody>
                         <tr v-for="(txn, i) in transactions" :key="txn.id">
                             <td class="mono muted num">
-                                {{ ((pagination?.current_page ?? 1) - 1) * (pagination?.per_page ?? DEFAULT_PAGE_SIZE) + i + 1 }}
+                                {{
+                                    ((pagination?.current_page ?? 1) - 1) *
+                                        (pagination?.per_page ??
+                                            DEFAULT_PAGE_SIZE) +
+                                    i +
+                                    1
+                                }}
                             </td>
                             <td class="mono muted ref-cell">{{ txn.id }}</td>
                             <td>
-                                <span class="type-chip" :class="txn.type === 'deposit' ? 'is-credit' : 'is-debit'">
+                                <span
+                                    class="type-chip"
+                                    :class="
+                                        txn.type === 'deposit'
+                                            ? 'is-credit'
+                                            : 'is-debit'
+                                    "
+                                >
                                     {{ txn.type }}
                                 </span>
                             </td>
-                            <td class="mono right" :class="txn.type === 'deposit' ? 'is-credit' : 'is-debit'">
+                            <td
+                                class="mono right"
+                                :class="
+                                    txn.type === 'deposit'
+                                        ? 'is-credit'
+                                        : 'is-debit'
+                                "
+                            >
                                 {{ formatAmount(txn) }}
                             </td>
-                            <td class="muted">{{ txn.payment_method ?? '—' }}</td>
-                            <td>
-                                <span class="status-pill" :class="`is-${txn.status}`">{{ txn.status }}</span>
+                            <td class="muted">
+                                {{ txn.payment_method ?? '—' }}
                             </td>
-                            <td class="mono muted right">{{ formatDate(txn.created_at) }}</td>
+                            <td>
+                                <span
+                                    class="status-pill"
+                                    :class="`is-${txn.status}`"
+                                    >{{ txn.status }}</span
+                                >
+                            </td>
+                            <td class="mono muted right">
+                                {{ formatDate(txn.created_at) }}
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -238,14 +271,18 @@ onMounted(() => {
 
             <p v-else class="loading-state">Loading transactions…</p>
 
-            <Pagination v-if="pagination" :current-page="pagination.current_page"
-                :last-page="pagination.last_page" :total="pagination.total"
-                :per-page="pagination.per_page" @change="changePage"
-                @per-page-change="changePerPage" />
+            <Pagination
+                v-if="pagination"
+                :current-page="pagination.current_page"
+                :last-page="pagination.last_page"
+                :total="pagination.total"
+                :per-page="pagination.per_page"
+                @change="changePage"
+                @per-page-change="changePerPage"
+            />
         </section>
     </PlayerShell>
 </template>
-
 
 <style scoped>
 .card {
@@ -262,7 +299,7 @@ onMounted(() => {
     border: 1px solid var(--hairline);
     border-radius: 14px;
     padding: 22px 26px;
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
     color: var(--ink);
 }
 
@@ -304,7 +341,7 @@ onMounted(() => {
 }
 
 .filter-label {
-    font-family: "JetBrains Mono", monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 10px;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -338,7 +375,7 @@ select:focus {
 }
 
 .mono {
-    font-family: "JetBrains Mono", monospace;
+    font-family: 'JetBrains Mono', monospace;
 }
 
 /* Table */

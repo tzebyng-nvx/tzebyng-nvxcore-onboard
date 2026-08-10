@@ -1,19 +1,19 @@
 <script setup lang="ts">
-import AdminShell from "@/components/AdminShell.vue";
-import Pagination from "@/components/Pagination.vue";
-import { DEFAULT_PAGE_SIZE } from "@/config/pagination";
-import { useTour } from "@/composables/useTour";
-import { adminAuthHeaders } from "@/utils/authHeaders";
-import { Head, router } from "@inertiajs/vue3";
-import { onMounted, ref } from "vue";
+import { Head, router } from '@inertiajs/vue3';
+import { onMounted, ref } from 'vue';
+import AdminShell from '@/components/AdminShell.vue';
+import Pagination from '@/components/Pagination.vue';
+import { useTour } from '@/composables/useTour';
+import { DEFAULT_PAGE_SIZE } from '@/config/pagination';
+import { adminAuthHeaders } from '@/utils/authHeaders';
 
 interface AdminTransaction {
     id: number;
     merchant_order_id: string;
     user_email: string;
-    type: "deposit" | "withdrawal";
+    type: 'deposit' | 'withdrawal';
     amount: string;
-    status: "pending" | "success" | "failed" | "cancelled";
+    status: 'pending' | 'success' | 'failed' | 'cancelled';
     created_at: string;
 }
 
@@ -31,8 +31,8 @@ const perPage = ref(DEFAULT_PAGE_SIZE);
 const loading = ref(true);
 const loadError = ref<string | null>(null);
 
-const statusFilter = ref<string>("");
-const typeFilter = ref<string>("");
+const statusFilter = ref<string>('');
+const typeFilter = ref<string>('');
 
 async function loadTransactions() {
     loading.value = true;
@@ -40,35 +40,48 @@ async function loadTransactions() {
 
     try {
         const params = new URLSearchParams();
-        if (statusFilter.value) params.set("status", statusFilter.value);
-        if (typeFilter.value) params.set("type", typeFilter.value);
-        params.set("per_page", String(perPage.value));
-        params.set("page", String(page.value));
 
-        const res = await fetch(`/api/admin/transactions?${params.toString()}`, {
-            headers: adminAuthHeaders(),
-        });
+        if (statusFilter.value) {
+            params.set('status', statusFilter.value);
+        }
+
+        if (typeFilter.value) {
+            params.set('type', typeFilter.value);
+        }
+
+        params.set('per_page', String(perPage.value));
+        params.set('page', String(page.value));
+
+        const res = await fetch(
+            `/api/admin/transactions?${params.toString()}`,
+            {
+                headers: adminAuthHeaders(),
+            },
+        );
 
         if (res.status === 401) {
-            router.visit("/admin/login");
+            router.visit('/admin/login');
+
             return;
         }
 
         if (res.status === 403) {
             loadError.value = "You don't have access to this area.";
+
             return;
         }
 
         if (!res.ok) {
-            loadError.value = "Could not load transactions right now.";
+            loadError.value = 'Could not load transactions right now.';
+
             return;
         }
 
         const body = await res.json();
         transactions.value = body.data ?? body;
         meta.value = body.meta ?? null;
-    } catch (e) {
-        loadError.value = "Something went wrong loading transactions.";
+    } catch {
+        loadError.value = 'Something went wrong loading transactions.';
     } finally {
         loading.value = false;
     }
@@ -91,30 +104,33 @@ function applyFilter() {
 }
 
 function formatAmount(txn: AdminTransaction): string {
-    const sign = txn.type === "deposit" ? "+" : "-";
+    const sign = txn.type === 'deposit' ? '+' : '-';
+
     return `${sign}${Number(txn.amount).toFixed(2)}`;
 }
 
 function formatDate(iso: string): string {
     return new Date(iso).toLocaleString(undefined, {
-        dateStyle: "medium",
-        timeStyle: "short",
+        dateStyle: 'medium',
+        timeStyle: 'short',
     });
 }
 
-useTour("admin-transactions", [
+useTour('admin-transactions', [
     {
         element: '[data-tour="filters"]',
         popover: {
-            title: "Filter transactions",
-            description: "Narrow the list by type (deposit/withdrawal) and status.",
+            title: 'Filter transactions',
+            description:
+                'Narrow the list by type (deposit/withdrawal) and status.',
         },
     },
     {
         element: '[data-tour="txn-table"]',
         popover: {
-            title: "Transaction history",
-            description: "Every transaction with its reference, user, amount, status and date.",
+            title: 'Transaction history',
+            description:
+                'Every transaction with its reference, user, amount, status and date.',
         },
     },
 ]);
@@ -125,13 +141,20 @@ onMounted(() => {
 </script>
 
 <template>
-
     <Head title="Transactions" />
 
-    <AdminShell active="transactions" eyebrow="Back office" title="Transactions">
+    <AdminShell
+        active="transactions"
+        eyebrow="Back office"
+        title="Transactions"
+    >
         <template #actions>
-            <button class="refresh-btn" :disabled="loading" @click="loadTransactions">
-                {{ loading ? "Refreshing…" : "↻ Refresh" }}
+            <button
+                class="refresh-btn"
+                :disabled="loading"
+                @click="loadTransactions"
+            >
+                {{ loading ? 'Refreshing…' : '↻ Refresh' }}
             </button>
         </template>
 
@@ -156,7 +179,11 @@ onMounted(() => {
 
             <p v-if="loadError" class="load-error">{{ loadError }}</p>
 
-            <div v-else-if="!loading && transactions.length" class="table-wrap" data-tour="txn-table">
+            <div
+                v-else-if="!loading && transactions.length"
+                class="table-wrap"
+                data-tour="txn-table"
+            >
                 <table class="txn-table">
                     <thead>
                         <tr>
@@ -172,31 +199,62 @@ onMounted(() => {
                     <tbody>
                         <tr v-for="(txn, i) in transactions" :key="txn.id">
                             <td class="mono muted num">
-                                {{ ((meta?.current_page ?? 1) - 1) * (meta?.per_page ?? perPage) + i + 1 }}
+                                {{
+                                    ((meta?.current_page ?? 1) - 1) *
+                                        (meta?.per_page ?? perPage) +
+                                    i +
+                                    1
+                                }}
                             </td>
-                            <td class="mono truncate" :title="txn.merchant_order_id">
+                            <td
+                                class="mono truncate"
+                                :title="txn.merchant_order_id"
+                            >
                                 {{ txn.merchant_order_id }}
                             </td>
-                            <td class="truncate" :title="txn.user_email">{{ txn.user_email }}</td>
+                            <td class="truncate" :title="txn.user_email">
+                                {{ txn.user_email }}
+                            </td>
                             <td class="capitalize">{{ txn.type }}</td>
-                            <td class="mono" :class="txn.type === 'deposit' ? 'is-credit' : 'is-debit'">
+                            <td
+                                class="mono"
+                                :class="
+                                    txn.type === 'deposit'
+                                        ? 'is-credit'
+                                        : 'is-debit'
+                                "
+                            >
                                 {{ formatAmount(txn) }}
                             </td>
                             <td>
-                                <span class="status-pill" :class="`is-${txn.status}`">{{ txn.status }}</span>
+                                <span
+                                    class="status-pill"
+                                    :class="`is-${txn.status}`"
+                                    >{{ txn.status }}</span
+                                >
                             </td>
-                            <td class="mono muted">{{ formatDate(txn.created_at) }}</td>
+                            <td class="mono muted">
+                                {{ formatDate(txn.created_at) }}
+                            </td>
                         </tr>
                     </tbody>
                 </table>
             </div>
 
-            <p v-else-if="!loading" class="empty-state">No transactions match these filters.</p>
+            <p v-else-if="!loading" class="empty-state">
+                No transactions match these filters.
+            </p>
             <p v-else class="loading-state">Loading transactions…</p>
 
-            <Pagination v-if="meta" :current-page="meta.current_page" :last-page="meta.last_page"
-                :total="meta.total" :per-page="meta.per_page" @change="changePage"
-                @per-page-change="changePerPage" />
+            <Pagination
+                v-if="meta"
+                :current-page="meta.current_page"
+                :last-page="meta.last_page"
+                :total="meta.total"
+                :per-page="meta.per_page"
+                @change="changePage"
+                @per-page-change="changePerPage"
+            />
         </section>
     </AdminShell>
 </template>
@@ -228,7 +286,7 @@ onMounted(() => {
     border-radius: 12px;
     padding: 24px 28px;
     background: white;
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
 }
 
 .card-header {
@@ -306,7 +364,7 @@ onMounted(() => {
 }
 
 .mono {
-    font-family: "JetBrains Mono", monospace;
+    font-family: 'JetBrains Mono', monospace;
 }
 
 .muted {

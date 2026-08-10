@@ -9,6 +9,9 @@ readonly class PaymentGatewayAuthRequestDto
         public string $api_key
     ) {}
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         return [

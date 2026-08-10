@@ -37,11 +37,17 @@ class Wallet extends Model
         'updated_at' => 'datetime',
     ];
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * @return HasMany<WalletLedger, $this>
+     */
     public function ledgerEntries(): HasMany
     {
         return $this->hasMany(WalletLedger::class);

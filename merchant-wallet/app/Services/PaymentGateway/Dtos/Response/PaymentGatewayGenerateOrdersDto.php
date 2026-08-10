@@ -15,10 +15,13 @@ readonly class PaymentGatewayGenerateOrdersDto
         public ?string $message
     ) {}
 
+    /**
+     * @param array<string, mixed> $data
+     */
     public static function fromApi(array $data): self
     {
         return new self(
-            status: (bool) $data['status'] ?? false,
+            status: (bool) ($data['status'] ?? false),
             p_url: $data['p_url'] ?? null,
             payment_id: $data['payment_id'] ?? null,
             message: $data['message'] ?? null,

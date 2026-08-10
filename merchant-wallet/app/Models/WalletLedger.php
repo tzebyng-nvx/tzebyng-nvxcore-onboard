@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * @property int $id
+ * @property string $id
  * @property int $wallet_id
  * @property string $transaction_id
  * @property string $entry_type
@@ -42,11 +42,17 @@ class WalletLedger extends Model
         'updated_at' => 'datetime',
     ];
 
+    /**
+     * @return BelongsTo<Wallet, $this>
+     */
     public function wallet(): BelongsTo
     {
         return $this->belongsTo(Wallet::class);
     }
 
+    /**
+     * @return BelongsTo<Transaction, $this>
+     */
     public function transaction(): BelongsTo
     {
         return $this->belongsTo(Transaction::class);

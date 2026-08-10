@@ -73,6 +73,16 @@ Run the dev servers (Vite + queue + logs) with:
 composer dev
 ```
 
+### Entry points
+
+Replace `{domain}` with the app host (e.g. `merchant-wallet.test`) and
+`{tenantid}` with the tenant id (e.g. `demo`):
+
+- `http://{domain}/` — platform landing / first-time visit
+- `http://{domain}/login` — platform admin login (central back-office)
+- `http://{tenantid}.{domain}/login` — tenant player (end-user) login
+- `http://{tenantid}.{domain}/admin/login` — tenant admin login
+
 ---
 
 ## Multi-tenancy & ngrok

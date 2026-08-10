@@ -1,17 +1,18 @@
 <script setup lang="ts">
-import AdminShell from "@/components/AdminShell.vue";
-import { useToast } from "@/composables/useToast";
-import { useTour } from "@/composables/useTour";
-import { adminAuthHeaders } from "@/utils/authHeaders";
-import { type Errors, maxLength, required, url, validate } from "@/utils/validation";
-import { Head } from "@inertiajs/vue3";
-import { onMounted, reactive, ref } from "vue";
+import { Head } from '@inertiajs/vue3';
+import { onMounted, reactive, ref } from 'vue';
+import AdminShell from '@/components/AdminShell.vue';
+import { useToast } from '@/composables/useToast';
+import { useTour } from '@/composables/useTour';
+import { adminAuthHeaders } from '@/utils/authHeaders';
+import { maxLength, required, url, validate } from '@/utils/validation';
+import type { Errors } from '@/utils/validation';
 
 const form = reactive({
-    merchant_username: "",
-    api_key: "",
-    secret_key: "",
-    base_url: "",
+    merchant_username: '',
+    api_key: '',
+    secret_key: '',
+    base_url: '',
 });
 
 const loading = ref(true);
@@ -25,68 +26,72 @@ const { showToast } = useToast();
 
 function validateForm(): boolean {
     fieldErrors.value = validate(form, {
-        merchant_username: [required("Merchant username is required."), maxLength(255)],
-        api_key: [required("API key is required."), maxLength(255)],
-        secret_key: [required("Secret key is required."), maxLength(255)],
-        base_url: [required("Base URL is required."), url(), maxLength(255)],
+        merchant_username: [
+            required('Merchant username is required.'),
+            maxLength(255),
+        ],
+        api_key: [required('API key is required.'), maxLength(255)],
+        secret_key: [required('Secret key is required.'), maxLength(255)],
+        base_url: [required('Base URL is required.'), url(), maxLength(255)],
     });
+
     return Object.keys(fieldErrors.value).length === 0;
 }
 
-useTour("admin-gateway-v2", [
+useTour('admin-gateway-v2', [
     {
         element: '[data-tour="gateway-form"]',
         popover: {
-            title: "Payment gateway settings",
+            title: 'Payment gateway settings',
             description:
-                "These credentials connect your tenant to the payment gateway. They power every deposit and withdrawal, so keep them accurate and private.",
+                'These credentials connect your tenant to the payment gateway. They power every deposit and withdrawal, so keep them accurate and private.',
         },
     },
     {
-        element: "#merchant_username",
+        element: '#merchant_username',
         popover: {
-            title: "Merchant username",
+            title: 'Merchant username',
             description:
-                "Your merchant account identifier at the gateway. Find it in your gateway dashboard under account or API settings.",
+                'Your merchant account identifier at the gateway. Find it in your gateway dashboard under account or API settings.',
         },
     },
     {
-        element: "#api_key",
+        element: '#api_key',
         popover: {
-            title: "API key",
+            title: 'API key',
             description:
-                "The public key that identifies your integration on each request to the gateway.",
+                'The public key that identifies your integration on each request to the gateway.',
         },
     },
     {
-        element: "#secret_key",
+        element: '#secret_key',
         popover: {
-            title: "Secret key",
+            title: 'Secret key',
             description:
-                "The private key used to sign requests. Treat it like a password — use “Show” to reveal it only when you need to verify it.",
+                'The private key used to sign requests. Treat it like a password — use “Show” to reveal it only when you need to verify it.',
         },
     },
     {
         element: '[data-tour="secret-toggle"]',
         popover: {
-            title: "Show / hide secret",
-            description: "Toggle visibility of the secret key while editing.",
+            title: 'Show / hide secret',
+            description: 'Toggle visibility of the secret key while editing.',
         },
     },
     {
-        element: "#base_url",
+        element: '#base_url',
         popover: {
-            title: "Base URL",
+            title: 'Base URL',
             description:
-                "The gateway endpoint requests are sent to. Use the sandbox URL while testing and the live URL in production.",
+                'The gateway endpoint requests are sent to. Use the sandbox URL while testing and the live URL in production.',
         },
     },
     {
         element: '[data-tour="gateway-save"]',
         popover: {
-            title: "Save settings",
+            title: 'Save settings',
             description:
-                "Store your changes. They take effect immediately for all new transactions in this tenant.",
+                'Store your changes. They take effect immediately for all new transactions in this tenant.',
         },
     },
 ]);
@@ -99,12 +104,12 @@ async function loadSettings() {
     loading.value = true;
 
     try {
-        const response = await fetch("/api/admin/payment-gateway-settings", {
+        const response = await fetch('/api/admin/payment-gateway-settings', {
             headers: adminAuthHeaders(),
         });
 
         if (!response.ok) {
-            throw new Error("Failed to load settings");
+            throw new Error('Failed to load settings');
         }
 
         const data = await response.json();
@@ -113,9 +118,8 @@ async function loadSettings() {
             Object.assign(form, data);
         }
     } catch (error) {
-        loadError.value = error instanceof Error
-            ? error.message
-            : "Failed to load settings";
+        loadError.value =
+            error instanceof Error ? error.message : 'Failed to load settings';
     } finally {
         loading.value = false;
     }
@@ -130,25 +134,22 @@ async function save() {
     formError.value = null;
 
     try {
-        const response = await fetch(
-            "/api/admin/payment-gateway-settings",
-            {
-                method: "PUT",
-                headers: {
-                    ...adminAuthHeaders(),
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(form),
-            }
-        );
+        const response = await fetch('/api/admin/payment-gateway-settings', {
+            method: 'PUT',
+            headers: {
+                ...adminAuthHeaders(),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(form),
+        });
 
         if (!response.ok) {
             const body = await response.json().catch(() => null);
 
-            const message = body?.message ?? "Failed to save settings";
+            const message = body?.message ?? 'Failed to save settings';
             formError.value = message;
 
-            showToast(message, "error");
+            showToast(message, 'error');
 
             return;
         }
@@ -156,11 +157,10 @@ async function save() {
         const data = await response.json();
         Object.assign(form, data);
 
-        showToast("Gateway settings saved.", "success");
-
-    } catch (error) {
-        formError.value = "Something went wrong. Please try again.";
-        showToast("Something went wrong. Please try again.", "error");
+        showToast('Gateway settings saved.', 'success');
+    } catch {
+        formError.value = 'Something went wrong. Please try again.';
+        showToast('Something went wrong. Please try again.', 'error');
     } finally {
         saving.value = false;
     }
@@ -168,7 +168,6 @@ async function save() {
 </script>
 
 <template>
-
     <Head title="Payment Gateway Settings" />
 
     <AdminShell active="gateway" eyebrow="Back office" title="Gateway settings">
@@ -176,54 +175,95 @@ async function save() {
             <p v-if="loadError" class="error">{{ loadError }}</p>
             <p v-if="formError" class="error">{{ formError }}</p>
 
-            <div v-if="loading" class="loading-state">
-                Loading…
-            </div>
+            <div v-if="loading" class="loading-state">Loading…</div>
 
-            <form v-else @submit.prevent="save" class="settings-form" data-tour="gateway-form" novalidate>
+            <form
+                v-else
+                @submit.prevent="save"
+                class="settings-form"
+                data-tour="gateway-form"
+                novalidate
+            >
                 <div class="field">
                     <label for="merchant_username">Merchant username</label>
-                    <input id="merchant_username" v-model="form.merchant_username" type="text" autocomplete="off"
-                        :class="{ 'is-invalid': fieldErrors.merchant_username }" />
-                    <span v-if="fieldErrors.merchant_username" class="field-error">
+                    <input
+                        id="merchant_username"
+                        v-model="form.merchant_username"
+                        type="text"
+                        autocomplete="off"
+                        :class="{ 'is-invalid': fieldErrors.merchant_username }"
+                    />
+                    <span
+                        v-if="fieldErrors.merchant_username"
+                        class="field-error"
+                    >
                         {{ fieldErrors.merchant_username }}
                     </span>
                 </div>
 
                 <div class="field">
                     <label for="api_key">API key</label>
-                    <input id="api_key" v-model="form.api_key" type="text" autocomplete="off"
-                        :class="{ 'is-invalid': fieldErrors.api_key }" />
-                    <span v-if="fieldErrors.api_key" class="field-error">{{ fieldErrors.api_key }}</span>
+                    <input
+                        id="api_key"
+                        v-model="form.api_key"
+                        type="text"
+                        autocomplete="off"
+                        :class="{ 'is-invalid': fieldErrors.api_key }"
+                    />
+                    <span v-if="fieldErrors.api_key" class="field-error">{{
+                        fieldErrors.api_key
+                    }}</span>
                 </div>
 
                 <div class="field">
                     <div class="field-row">
                         <label for="secret_key">Secret key</label>
 
-                        <button type="button" class="link-btn" data-tour="secret-toggle"
-                            @click="showSecret = !showSecret">
-                            {{ showSecret ? "Hide" : "Show" }}
+                        <button
+                            type="button"
+                            class="link-btn"
+                            data-tour="secret-toggle"
+                            @click="showSecret = !showSecret"
+                        >
+                            {{ showSecret ? 'Hide' : 'Show' }}
                         </button>
                     </div>
 
-                    <input id="secret_key" v-model="form.secret_key" :type="showSecret ? 'text' : 'password'"
-                        autocomplete="off" :class="{ 'is-invalid': fieldErrors.secret_key }" />
-                    <span v-if="fieldErrors.secret_key" class="field-error">{{ fieldErrors.secret_key }}</span>
+                    <input
+                        id="secret_key"
+                        v-model="form.secret_key"
+                        :type="showSecret ? 'text' : 'password'"
+                        autocomplete="off"
+                        :class="{ 'is-invalid': fieldErrors.secret_key }"
+                    />
+                    <span v-if="fieldErrors.secret_key" class="field-error">{{
+                        fieldErrors.secret_key
+                    }}</span>
                 </div>
 
                 <div class="field">
                     <label for="base_url">Base URL</label>
 
-                    <input id="base_url" v-model="form.base_url" type="url"
+                    <input
+                        id="base_url"
+                        v-model="form.base_url"
+                        type="url"
                         placeholder="https://sandbox.gateway.example.com"
-                        :class="{ 'is-invalid': fieldErrors.base_url }" />
-                    <span v-if="fieldErrors.base_url" class="field-error">{{ fieldErrors.base_url }}</span>
+                        :class="{ 'is-invalid': fieldErrors.base_url }"
+                    />
+                    <span v-if="fieldErrors.base_url" class="field-error">{{
+                        fieldErrors.base_url
+                    }}</span>
                 </div>
 
                 <div class="panel-actions">
-                    <button type="submit" class="submit-btn" data-tour="gateway-save" :disabled="saving">
-                        {{ saving ? "Saving…" : "Save settings" }}
+                    <button
+                        type="submit"
+                        class="submit-btn"
+                        data-tour="gateway-save"
+                        :disabled="saving"
+                    >
+                        {{ saving ? 'Saving…' : 'Save settings' }}
                     </button>
                 </div>
             </form>
@@ -247,11 +287,11 @@ async function save() {
     border-radius: 12px;
     padding: 28px;
     color: var(--ink);
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
 }
 
 .eyebrow {
-    font-family: "JetBrains Mono", monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
@@ -272,7 +312,7 @@ h1 {
 }
 
 .subtitle code {
-    font-family: "JetBrains Mono", monospace;
+    font-family: 'JetBrains Mono', monospace;
     background: var(--hairline);
     padding: 1px 5px;
     border-radius: 4px;
@@ -316,7 +356,7 @@ h1 {
 }
 
 .mono {
-    font-family: "JetBrains Mono", monospace;
+    font-family: 'JetBrains Mono', monospace;
 }
 
 .muted {
@@ -449,9 +489,9 @@ label {
     margin-bottom: 6px;
 }
 
-input[type="text"],
-input[type="url"],
-input[type="password"] {
+input[type='text'],
+input[type='url'],
+input[type='password'] {
     width: 100%;
     padding: 10px 12px;
     border: 1px solid var(--hairline);

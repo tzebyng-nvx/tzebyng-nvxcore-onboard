@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useToast } from "@/composables/useToast";
+import { useToast } from '@/composables/useToast';
 
 const { toasts, dismiss } = useToast();
 </script>
@@ -8,10 +8,22 @@ const { toasts, dismiss } = useToast();
     <Teleport to="body">
         <div class="toast-host" aria-live="polite" aria-atomic="true">
             <TransitionGroup name="toast">
-                <div v-for="toast in toasts" :key="toast.id" class="toast" :class="`is-${toast.type}`"
-                    role="status" @click="dismiss(toast.id)">
+                <div
+                    v-for="toast in toasts"
+                    :key="toast.id"
+                    class="toast"
+                    :class="`is-${toast.type}`"
+                    role="status"
+                    @click="dismiss(toast.id)"
+                >
                     <span class="toast-icon">
-                        {{ toast.type === "success" ? "✓" : toast.type === "error" ? "!" : "•" }}
+                        {{
+                            toast.type === 'success'
+                                ? '✓'
+                                : toast.type === 'error'
+                                  ? '!'
+                                  : '•'
+                        }}
                     </span>
                     <span class="toast-message">{{ toast.message }}</span>
                 </div>
@@ -30,7 +42,7 @@ const { toasts, dismiss } = useToast();
     flex-direction: column;
     gap: 10px;
     pointer-events: none;
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
 }
 
 .toast {
@@ -89,7 +101,9 @@ const { toasts, dismiss } = useToast();
 
 .toast-enter-active,
 .toast-leave-active {
-    transition: opacity 0.25s ease, transform 0.25s ease;
+    transition:
+        opacity 0.25s ease,
+        transform 0.25s ease;
 }
 
 .toast-enter-from,

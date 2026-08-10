@@ -18,6 +18,9 @@ readonly class PaymentGatewayGenerateOrdersRequestDto
         public ?string $callback_url = null
     ) {}
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         return [

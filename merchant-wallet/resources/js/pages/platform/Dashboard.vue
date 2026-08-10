@@ -1,10 +1,18 @@
 <script setup lang="ts">
-import Pagination from "@/components/Pagination.vue";
-import PlatformShell from "@/components/PlatformShell.vue";
-import { DEFAULT_PAGE_SIZE } from "@/config/pagination";
-import { email, type Errors, maxLength, minLength, pattern, required, validate } from "@/utils/validation";
-import { Head, router } from "@inertiajs/vue3";
-import { computed, onMounted, reactive, ref } from "vue";
+import { Head, router } from '@inertiajs/vue3';
+import { computed, onMounted, reactive, ref } from 'vue';
+import Pagination from '@/components/Pagination.vue';
+import PlatformShell from '@/components/PlatformShell.vue';
+import { DEFAULT_PAGE_SIZE } from '@/config/pagination';
+import {
+    email,
+    maxLength,
+    minLength,
+    pattern,
+    required,
+    validate,
+} from '@/utils/validation';
+import type { Errors } from '@/utils/validation';
 
 interface TenantRow {
     id: string;
@@ -24,14 +32,17 @@ const createError = ref<string | null>(null);
 const fieldErrors = ref<Errors>({});
 const showCreate = ref(false);
 
-// The tenant-resolving host suffix is fixed by the platform. The domain is not
-// customisable: the tenant is resolved from the leading subdomain label on API
-// requests (X-Tenant = hostname.split(".")[0]), so the label MUST equal the
-// tenant ID. The domain is therefore derived from the ID and shown read-only.
-const DOMAIN_SUFFIX = "merchant-wallet.test";
+// The tenant-resolving host suffix follows however the platform is being served,
+// taken from the current host (Herd → `merchant-wallet.test`, local artisan serve
+// → `localhost`) so the created tenant is reachable at `<id>.<suffix>` without
+// editing the config. The port is excluded on purpose — domain records store the
+// hostname only. The domain is not customisable: the tenant is resolved from the
+// leading subdomain label, so the label MUST equal the tenant ID; it is derived
+// from the ID and shown read-only.
+const DOMAIN_SUFFIX = window.location.hostname || 'localhost';
 
 function openCreate() {
-    form.id = form.admin_email = form.admin_password = "";
+    form.id = form.admin_email = form.admin_password = '';
     createError.value = null;
     fieldErrors.value = {};
     showCreate.value = true;
@@ -40,23 +51,34 @@ function openCreate() {
 function validateForm(): boolean {
     fieldErrors.value = validate(form, {
         id: [
-            required("Tenant ID is required."),
+            required('Tenant ID is required.'),
             maxLength(64),
-            pattern(/^[a-z0-9-]+$/, "Only lowercase letters, digits and hyphens are allowed."),
+            pattern(
+                /^[a-z0-9-]+$/,
+                'Only lowercase letters, digits and hyphens are allowed.',
+            ),
         ],
-        admin_email: [required("Admin email is required."), email(), maxLength(255)],
+        admin_email: [
+            required('Admin email is required.'),
+            email(),
+            maxLength(255),
+        ],
         admin_password: [
-            required("Admin password is required."),
-            minLength(6, "Password must be at least 6 characters."),
+            required('Admin password is required.'),
+            minLength(6, 'Password must be at least 6 characters.'),
         ],
     });
+
     return Object.keys(fieldErrors.value).length === 0;
 }
 
 // Normalise the tenant ID to a valid subdomain label: lowercase, digits, and
 // hyphens only (matches the backend regex and keeps id/domain in sync).
 function onTenantIdInput() {
-    form.id = form.id.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
+    form.id = form.id
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, '');
 }
 
 function closeCreate() {
@@ -66,12 +88,14 @@ function closeCreate() {
 }
 
 const form = reactive({
-    id: "",
-    admin_email: "",
-    admin_password: "",
+    id: '',
+    admin_email: '',
+    admin_password: '',
 });
 
-const fullDomain = computed(() => `${form.id || "<tenant-id>"}.${DOMAIN_SUFFIX}`);
+const fullDomain = computed(
+    () => `${form.id || '<tenant-id>'}.${DOMAIN_SUFFIX}`,
+);
 
 const totals = computed(() => ({
     tenants: tenants.value.length,
@@ -94,7 +118,10 @@ const tenantMeta = computed(() => ({
 }));
 
 const pagedTenants = computed(() =>
-    tenants.value.slice((page.value - 1) * perPage.value, page.value * perPage.value)
+    tenants.value.slice(
+        (page.value - 1) * perPage.value,
+        page.value * perPage.value,
+    ),
 );
 
 function changePage(next: number) {
@@ -107,55 +134,69 @@ function changePerPage(next: number) {
 }
 
 function authHeaders(): HeadersInit {
-    const token = localStorage.getItem("access_token") ?? "";
-    const tokenType = localStorage.getItem("token_type") ?? "Bearer";
+    const token = localStorage.getItem('access_token') ?? '';
+    const tokenType = localStorage.getItem('token_type') ?? 'Bearer';
+
     return {
-        Accept: "application/json",
-        "Content-Type": "application/json",
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
         Authorization: `${tokenType} ${token}`,
     };
 }
 
 function isTokenExpired(): boolean {
-    const expiresAt = localStorage.getItem("expires_at");
-    if (!expiresAt) return true;
+    const expiresAt = localStorage.getItem('expires_at');
+
+    if (!expiresAt) {
+        return true;
+    }
+
     return Date.now() >= Number(expiresAt);
 }
 
 async function logout() {
     try {
-        await fetch("/api/platform/logout", {
-            method: "POST",
+        await fetch('/api/platform/logout', {
+            method: 'POST',
             headers: authHeaders(),
         });
-    } catch (e) { }
+    } catch {}
 
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("token_type");
-    localStorage.removeItem("expires_at");
-    router.visit("/login");
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('token_type');
+    localStorage.removeItem('expires_at');
+    router.visit('/login');
 }
 
 async function loadTenants() {
     loading.value = true;
     loadError.value = null;
+
     try {
-        const res = await fetch("/api/platform/tenants", { headers: authHeaders() });
+        const res = await fetch('/api/platform/tenants', {
+            headers: authHeaders(),
+        });
+
         if (res.status === 401) {
             logout();
+
             return;
         }
+
         if (!res.ok) {
-            loadError.value = "Could not load tenants.";
+            loadError.value = 'Could not load tenants.';
+
             return;
         }
+
         const body = await res.json();
         tenants.value = body.data ?? [];
+
         if (page.value > tenantMeta.value.last_page) {
             page.value = tenantMeta.value.last_page;
         }
-    } catch (e) {
-        loadError.value = "Something went wrong loading tenants.";
+    } catch {
+        loadError.value = 'Something went wrong loading tenants.';
     } finally {
         loading.value = false;
     }
@@ -168,9 +209,10 @@ async function createTenant() {
 
     creating.value = true;
     createError.value = null;
+
     try {
-        const res = await fetch("/api/platform/tenants", {
-            method: "POST",
+        const res = await fetch('/api/platform/tenants', {
+            method: 'POST',
             headers: authHeaders(),
             body: JSON.stringify({
                 id: form.id,
@@ -179,78 +221,111 @@ async function createTenant() {
                 admin_password: form.admin_password,
             }),
         });
+
         if (res.status === 401) {
             logout();
+
             return;
         }
+
         if (res.status === 422) {
             const body = await res.json();
-            createError.value = Object.values(body.errors ?? { m: ["Validation failed."] })
+            createError.value = Object.values(
+                body.errors ?? { m: ['Validation failed.'] },
+            )
                 .flat()
-                .join(" ");
+                .join(' ');
+
             return;
         }
+
         if (!res.ok) {
-            createError.value = "Could not create tenant.";
+            createError.value = 'Could not create tenant.';
+
             return;
         }
-        form.id = form.admin_email = form.admin_password = "";
+
+        form.id = form.admin_email = form.admin_password = '';
         showCreate.value = false;
         createError.value = null;
         await loadTenants();
-    } catch (e) {
-        createError.value = "Something went wrong creating the tenant.";
+    } catch {
+        createError.value = 'Something went wrong creating the tenant.';
     } finally {
         creating.value = false;
     }
 }
 
 async function deleteTenant(id: string) {
-    if (!confirm(`Delete tenant "${id}" and its database? This cannot be undone.`)) {
+    if (
+        !confirm(
+            `Delete tenant "${id}" and its database? This cannot be undone.`,
+        )
+    ) {
         return;
     }
+
     try {
         const res = await fetch(`/api/platform/tenants/${id}`, {
-            method: "DELETE",
+            method: 'DELETE',
             headers: authHeaders(),
         });
+
         if (res.status === 401) {
             logout();
+
             return;
         }
+
         if (res.ok) {
             await loadTenants();
         }
-    } catch (e) { }
+    } catch {}
 }
 
 onMounted(() => {
     if (isTokenExpired()) {
-        router.visit("/login");
+        router.visit('/login');
+
         return;
     }
+
     loadTenants();
 });
 </script>
 
 <template>
-
     <Head title="Platform Dashboard" />
 
-    <PlatformShell active="tenants" eyebrow="Central back office" title="Platform Dashboard">
+    <PlatformShell
+        active="tenants"
+        eyebrow="Central back office"
+        title="Platform Dashboard"
+    >
         <template #actions>
-            <button class="refresh-btn" :disabled="loading" @click="loadTenants">
-                {{ loading ? "Refreshing…" : "↻ Refresh" }}
+            <button
+                class="refresh-btn"
+                :disabled="loading"
+                @click="loadTenants"
+            >
+                {{ loading ? 'Refreshing…' : '↻ Refresh' }}
             </button>
-            <button class="action-btn primary" @click="openCreate">+ New tenant</button>
+            <button class="action-btn primary" @click="openCreate">
+                + New tenant
+            </button>
         </template>
 
         <section class="float-card">
             <div class="float-info">
                 <span class="eyebrow">Aggregate net float across tenants</span>
                 <div v-if="loading" class="float-amount is-loading">—</div>
-                <div v-else class="float-amount">MYR {{ netFloat.toFixed(2) }}</div>
-                <span class="float-note">Deposits less withdrawals over all provisioned tenants.</span>
+                <div v-else class="float-amount">
+                    MYR {{ netFloat.toFixed(2) }}
+                </div>
+                <span class="float-note"
+                    >Deposits less withdrawals over all provisioned
+                    tenants.</span
+                >
             </div>
         </section>
 
@@ -258,25 +333,28 @@ onMounted(() => {
             <div class="stat-card">
                 <span class="eyebrow">Total tenants</span>
                 <div class="stat-value" :class="{ 'is-loading': loading }">
-                    {{ loading ? "—" : totals.tenants }}
+                    {{ loading ? '—' : totals.tenants }}
                 </div>
             </div>
             <div class="stat-card">
                 <span class="eyebrow">Total users</span>
                 <div class="stat-value" :class="{ 'is-loading': loading }">
-                    {{ loading ? "—" : totals.users }}
+                    {{ loading ? '—' : totals.users }}
                 </div>
             </div>
             <div class="stat-card">
                 <span class="eyebrow">Total deposits</span>
-                <div class="stat-value is-success" :class="{ 'is-loading': loading }">
-                    {{ loading ? "—" : `MYR ${totals.total_in.toFixed(2)}` }}
+                <div
+                    class="stat-value is-success"
+                    :class="{ 'is-loading': loading }"
+                >
+                    {{ loading ? '—' : `MYR ${totals.total_in.toFixed(2)}` }}
                 </div>
             </div>
             <div class="stat-card">
                 <span class="eyebrow">Total withdrawals</span>
                 <div class="stat-value" :class="{ 'is-loading': loading }">
-                    {{ loading ? "—" : `MYR ${totals.total_out.toFixed(2)}` }}
+                    {{ loading ? '—' : `MYR ${totals.total_out.toFixed(2)}` }}
                 </div>
             </div>
         </section>
@@ -304,19 +382,48 @@ onMounted(() => {
                     </thead>
                     <tbody>
                         <tr v-for="(t, i) in pagedTenants" :key="t.id">
-                            <td class="mono muted num">{{ (page - 1) * perPage + i + 1 }}</td>
-                            <td class="mono truncate" :title="t.id">{{ t.id }}</td>
-                            <td class="mono muted truncate" :title="t.domain ?? '—'">{{ t.domain ?? "—" }}</td>
+                            <td class="mono muted num">
+                                {{ (page - 1) * perPage + i + 1 }}
+                            </td>
+                            <td class="mono truncate" :title="t.id">
+                                {{ t.id }}
+                            </td>
+                            <td
+                                class="mono muted truncate"
+                                :title="t.domain ?? '—'"
+                            >
+                                {{ t.domain ?? '—' }}
+                            </td>
                             <td>
-                                <span class="status-pill" :class="t.provisioned ? 'is-active' : 'is-failed'">
-                                    {{ t.provisioned ? "Active" : "Not provisioned" }}
+                                <span
+                                    class="status-pill"
+                                    :class="
+                                        t.provisioned
+                                            ? 'is-active'
+                                            : 'is-failed'
+                                    "
+                                >
+                                    {{
+                                        t.provisioned
+                                            ? 'Active'
+                                            : 'Not provisioned'
+                                    }}
                                 </span>
                             </td>
                             <td class="mono">{{ t.user_count }}</td>
-                            <td class="mono is-credit">MYR {{ Number(t.total_in).toFixed(2) }}</td>
-                            <td class="mono is-debit">MYR {{ Number(t.total_out).toFixed(2) }}</td>
+                            <td class="mono is-credit">
+                                MYR {{ Number(t.total_in).toFixed(2) }}
+                            </td>
+                            <td class="mono is-debit">
+                                MYR {{ Number(t.total_out).toFixed(2) }}
+                            </td>
                             <td>
-                                <button class="delete-btn" @click="deleteTenant(t.id)">Delete</button>
+                                <button
+                                    class="delete-btn"
+                                    @click="deleteTenant(t.id)"
+                                >
+                                    Delete
+                                </button>
                             </td>
                         </tr>
                     </tbody>
@@ -326,46 +433,115 @@ onMounted(() => {
             <p v-else-if="!loading" class="empty-state">No tenants yet.</p>
             <p v-else class="loading-state">Loading tenants…</p>
 
-            <Pagination v-if="!loading && tenants.length" :current-page="tenantMeta.current_page"
-                :last-page="tenantMeta.last_page" :total="tenantMeta.total" :per-page="tenantMeta.per_page"
-                @change="changePage" @per-page-change="changePerPage" />
+            <Pagination
+                v-if="!loading && tenants.length"
+                :current-page="tenantMeta.current_page"
+                :last-page="tenantMeta.last_page"
+                :total="tenantMeta.total"
+                :per-page="tenantMeta.per_page"
+                @change="changePage"
+                @per-page-change="changePerPage"
+            />
         </section>
 
         <Teleport to="body">
-            <div v-if="showCreate" class="modal-overlay" @click.self="closeCreate">
+            <div
+                v-if="showCreate"
+                class="modal-overlay"
+                @click.self="closeCreate"
+            >
                 <div class="modal" role="dialog" aria-modal="true">
                     <div class="modal-header">
                         <h2>Create tenant</h2>
-                        <button class="modal-close" type="button" aria-label="Close" @click="closeCreate">×</button>
+                        <button
+                            class="modal-close"
+                            type="button"
+                            aria-label="Close"
+                            @click="closeCreate"
+                        >
+                            ×
+                        </button>
                     </div>
-                    <form class="create-form" @submit.prevent="createTenant" novalidate>
+                    <form
+                        class="create-form"
+                        @submit.prevent="createTenant"
+                        novalidate
+                    >
                         <label>
                             <span>Tenant ID</span>
-                            <input v-model="form.id" placeholder="tenant-id (a-z0-9-)"
-                                :class="{ 'is-invalid': fieldErrors.id }" @input="onTenantIdInput" />
-                            <span v-if="fieldErrors.id" class="field-error">{{ fieldErrors.id }}</span>
+                            <input
+                                v-model="form.id"
+                                placeholder="tenant-id (a-z0-9-)"
+                                :class="{ 'is-invalid': fieldErrors.id }"
+                                @input="onTenantIdInput"
+                            />
+                            <span v-if="fieldErrors.id" class="field-error">{{
+                                fieldErrors.id
+                            }}</span>
                         </label>
                         <label>
-                            <span>Domain <em class="hint">— auto-synced with Tenant ID</em></span>
-                            <input class="domain-readonly" :value="fullDomain" readonly tabindex="-1" />
+                            <span
+                                >Domain
+                                <em class="hint"
+                                    >— auto-synced with Tenant ID</em
+                                ></span
+                            >
+                            <input
+                                class="domain-readonly"
+                                :value="fullDomain"
+                                readonly
+                                tabindex="-1"
+                            />
                         </label>
                         <label>
                             <span>Admin email</span>
-                            <input v-model="form.admin_email" type="email" placeholder="admin email"
-                                :class="{ 'is-invalid': fieldErrors.admin_email }" />
-                            <span v-if="fieldErrors.admin_email" class="field-error">{{ fieldErrors.admin_email }}</span>
+                            <input
+                                v-model="form.admin_email"
+                                type="email"
+                                placeholder="admin email"
+                                :class="{
+                                    'is-invalid': fieldErrors.admin_email,
+                                }"
+                            />
+                            <span
+                                v-if="fieldErrors.admin_email"
+                                class="field-error"
+                                >{{ fieldErrors.admin_email }}</span
+                            >
                         </label>
                         <label>
                             <span>Admin password</span>
-                            <input v-model="form.admin_password" type="password" placeholder="admin password"
-                                :class="{ 'is-invalid': fieldErrors.admin_password }" />
-                            <span v-if="fieldErrors.admin_password" class="field-error">{{ fieldErrors.admin_password }}</span>
+                            <input
+                                v-model="form.admin_password"
+                                type="password"
+                                placeholder="admin password"
+                                :class="{
+                                    'is-invalid': fieldErrors.admin_password,
+                                }"
+                            />
+                            <span
+                                v-if="fieldErrors.admin_password"
+                                class="field-error"
+                                >{{ fieldErrors.admin_password }}</span
+                            >
                         </label>
-                        <p v-if="createError" class="load-error">{{ createError }}</p>
+                        <p v-if="createError" class="load-error">
+                            {{ createError }}
+                        </p>
                         <div class="form-actions">
-                            <button class="action-btn" type="button" @click="closeCreate">Cancel</button>
-                            <button class="action-btn primary" :disabled="creating" type="submit">
-                                {{ creating ? "Creating…" : "Create" }}
+                            <button
+                                class="action-btn"
+                                type="button"
+                                @click="closeCreate"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                class="action-btn primary"
+                                :disabled="creating"
+                                type="submit"
+                            >
+                                {{ creating ? 'Creating…' : 'Create' }}
                             </button>
                         </div>
                     </form>
@@ -390,16 +566,16 @@ onMounted(() => {
     position: relative;
     overflow: hidden;
     margin-bottom: 24px;
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
 }
 
 .float-card::after {
-    content: "◆";
+    content: '◆';
     position: absolute;
     right: 8px;
     top: -24px;
     font-size: 150px;
-    color: rgba(36, 84, 255, 0.10);
+    color: rgba(36, 84, 255, 0.1);
     pointer-events: none;
 }
 
@@ -408,7 +584,7 @@ onMounted(() => {
 }
 
 .float-amount {
-    font-family: "JetBrains Mono", monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 38px;
     font-weight: 600;
     letter-spacing: -0.01em;
@@ -482,7 +658,7 @@ onMounted(() => {
 }
 
 .eyebrow {
-    font-family: "JetBrains Mono", monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -490,7 +666,7 @@ onMounted(() => {
 }
 
 .stat-value {
-    font-family: "JetBrains Mono", monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 20px;
     font-weight: 600;
     margin-top: 6px;
@@ -556,7 +732,7 @@ onMounted(() => {
 }
 
 .create-form .domain-readonly {
-    font-family: "JetBrains Mono", monospace;
+    font-family: 'JetBrains Mono', monospace;
     color: #5b6570;
     background: #fafaf8;
     cursor: default;
@@ -584,7 +760,7 @@ onMounted(() => {
     justify-content: center;
     padding: 20px;
     z-index: 50;
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
 }
 
 .modal {
@@ -684,7 +860,7 @@ onMounted(() => {
 }
 
 .mono {
-    font-family: "JetBrains Mono", monospace;
+    font-family: 'JetBrains Mono', monospace;
 }
 
 .num {

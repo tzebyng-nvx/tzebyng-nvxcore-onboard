@@ -1,505 +1,553 @@
 <script setup lang="ts">
-import PlayerShell from "@/components/PlayerShell.vue";
-import { useTour } from "@/composables/useTour";
-import { Head, router } from "@inertiajs/vue3";
-import { computed, onMounted, reactive, ref } from "vue";
+import { Head, router } from '@inertiajs/vue3';
+import { computed, onMounted, reactive, ref } from 'vue';
+import PlayerShell from '@/components/PlayerShell.vue';
+import { useTour } from '@/composables/useTour';
 
 interface Bank {
-  currency: string;
-  bank_name: string;
-  id: string;
+    currency: string;
+    bank_name: string;
+    id: string;
 }
 
 interface CurrencyRate {
-  currency: string;
-  min: number;
-  max: number;
+    currency: string;
+    min: number;
+    max: number;
 }
 
 const banks = ref<Bank[]>([]);
 const currencies = ref<CurrencyRate[]>([]);
 
 const limits = reactive({
-  min: 0,
-  max: 0,
+    min: 0,
+    max: 0,
 });
 
 const form = reactive({
-  currency: "",
-  amount: "",
-  bank_id: "",
-  holder_name: "",
-  account_no: "",
+    currency: '',
+    amount: '',
+    bank_id: '',
+    holder_name: '',
+    account_no: '',
 });
 
 const submitting = ref(false);
 const submitError = ref<string | null>(null);
 
 const filteredBanks = computed(() => {
-  return banks.value.filter(
-    bank => bank.currency === form.currency
-  );
+    return banks.value.filter((bank) => bank.currency === form.currency);
 });
 
 const amountError = computed(() => {
-  if (form.amount === "") return null;
+    if (form.amount === '') {
+        return null;
+    }
 
-  const value = Number(form.amount);
+    const value = Number(form.amount);
 
-  if (Number.isNaN(value)) {
-    return "Enter a valid number.";
-  }
+    if (Number.isNaN(value)) {
+        return 'Enter a valid number.';
+    }
 
-  if (value <= 0) {
-    return "Amount must be greater than zero.";
-  }
+    if (value <= 0) {
+        return 'Amount must be greater than zero.';
+    }
 
-  if (value < limits.min) {
-    return `Minimum withdrawal is ${form.currency} ${limits.min.toFixed(2)}.`;
-  }
+    if (value < limits.min) {
+        return `Minimum withdrawal is ${form.currency} ${limits.min.toFixed(2)}.`;
+    }
 
-  if (value > limits.max) {
-    return `Maximum withdrawal is ${form.currency} ${limits.max.toFixed(2)}.`;
-  }
+    if (value > limits.max) {
+        return `Maximum withdrawal is ${form.currency} ${limits.max.toFixed(2)}.`;
+    }
 
-  return null;
+    return null;
 });
 
 const isValid = computed(() => {
-  return (
-    form.amount !== "" &&
-    amountError.value === null &&
-    form.currency !== "" &&
-    form.bank_id !== "" &&
-    form.holder_name.trim() !== "" &&
-    form.account_no.trim() !== ""
-  );
+    return (
+        form.amount !== '' &&
+        amountError.value === null &&
+        form.currency !== '' &&
+        form.bank_id !== '' &&
+        form.holder_name.trim() !== '' &&
+        form.account_no.trim() !== ''
+    );
 });
 
 function authHeaders(): HeadersInit {
-  const token = localStorage.getItem("access_token");
-  const tokenType = localStorage.getItem("token_type") ?? "Bearer";
+    const token = localStorage.getItem('access_token');
+    const tokenType = localStorage.getItem('token_type') ?? 'Bearer';
 
-  return {
-    "Content-Type": "application/json",
-    Accept: "application/json",
-    Authorization: `${tokenType} ${token}`,
-    "X-Tenant": window.location.hostname.split(".")[0],
-  };
+    return {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Authorization: `${tokenType} ${token}`,
+        'X-Tenant': window.location.hostname.split('.')[0],
+    };
 }
 
 function onCurrencyChange() {
-  const selectedCurrency = currencies.value.find(
-    currency => currency.currency === form.currency
-  );
+    const selectedCurrency = currencies.value.find(
+        (currency) => currency.currency === form.currency,
+    );
 
-  if (selectedCurrency) {
-    limits.min = selectedCurrency.min;
-    limits.max = selectedCurrency.max;
-  }
+    if (selectedCurrency) {
+        limits.min = selectedCurrency.min;
+        limits.max = selectedCurrency.max;
+    }
 
-  form.bank_id = filteredBanks.value[0]?.id ?? "";
+    form.bank_id = filteredBanks.value[0]?.id ?? '';
 }
 
 async function submit() {
-  if (!isValid.value) return;
-
-  submitting.value = true;
-  submitError.value = null;
-
-  try {
-    const response = await fetch("/api/payment/withdraw", {
-      method: "POST",
-      headers: authHeaders(),
-      body: JSON.stringify({
-        amount: Number(form.amount),
-        currency: form.currency,
-        bank_id: form.bank_id,
-        holder_name: form.holder_name,
-        account_no: form.account_no,
-      }),
-    });
-
-    if (response.status === 401) {
-      router.visit("/login");
-      return;
+    if (!isValid.value) {
+        return;
     }
 
-    if (!response.ok) {
-      const body = await response.json().catch(() => null);
+    submitting.value = true;
+    submitError.value = null;
 
-      submitError.value =
-        body?.message ??
-        "Could not process withdrawal. Please try again.";
+    try {
+        const response = await fetch('/api/payment/withdraw', {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({
+                amount: Number(form.amount),
+                currency: form.currency,
+                bank_id: form.bank_id,
+                holder_name: form.holder_name,
+                account_no: form.account_no,
+            }),
+        });
 
-      return;
+        if (response.status === 401) {
+            router.visit('/login');
+
+            return;
+        }
+
+        if (!response.ok) {
+            const body = await response.json().catch(() => null);
+
+            submitError.value =
+                body?.message ??
+                'Could not process withdrawal. Please try again.';
+
+            return;
+        }
+
+        router.visit('/dashboard');
+    } catch {
+        submitError.value = 'Something went wrong. Please try again.';
+    } finally {
+        submitting.value = false;
     }
-
-    router.visit("/dashboard");
-
-  } catch (e) {
-    submitError.value = "Something went wrong. Please try again.";
-  } finally {
-    submitting.value = false;
-  }
 }
 
 async function loadData() {
-  try {
-    const response = await fetch("/api/payment/general-info?withdraw=1", {
-      headers: authHeaders(),
-    });
+    try {
+        const response = await fetch('/api/payment/general-info?withdraw=1', {
+            headers: authHeaders(),
+        });
 
-    const data = await response.json();
+        const data = await response.json();
 
-    currencies.value = data.currencies;
-    banks.value = data.banks;
+        currencies.value = data.currencies;
+        banks.value = data.banks;
 
-    if (currencies.value.length > 0) {
-      form.currency = currencies.value[0].currency;
-      updateLimits();
+        if (currencies.value.length > 0) {
+            form.currency = currencies.value[0].currency;
+            updateLimits();
+        }
+
+        form.bank_id = filteredBanks.value[0]?.id ?? '';
+    } catch (error) {
+        console.error(error);
     }
-
-    form.bank_id = filteredBanks.value[0]?.id ?? "";
-
-  } catch (error) {
-    console.error(error);
-  }
 }
 
 function updateLimits() {
-  const selected = currencies.value.find(
-    currency => currency.currency === form.currency
-  );
+    const selected = currencies.value.find(
+        (currency) => currency.currency === form.currency,
+    );
 
-  if (!selected) {
-    limits.min = 0;
-    limits.max = 0;
-    return;
-  }
+    if (!selected) {
+        limits.min = 0;
+        limits.max = 0;
 
-  limits.min = selected.min;
-  limits.max = selected.max;
+        return;
+    }
+
+    limits.min = selected.min;
+    limits.max = selected.max;
 }
 
-useTour("player-withdraw", [
+useTour('player-withdraw', [
     {
         element: '[data-tour="withdraw-amount"]',
         popover: {
-            title: "Amount to withdraw",
-            description: "Enter how much you'd like to send to your bank account.",
+            title: 'Amount to withdraw',
+            description:
+                "Enter how much you'd like to send to your bank account.",
         },
     },
     {
         element: '[data-tour="withdraw-summary"]',
         popover: {
-            title: "Summary",
-            description: "Review the details of your withdrawal before submitting.",
+            title: 'Summary',
+            description:
+                'Review the details of your withdrawal before submitting.',
         },
     },
     {
         element: '[data-tour="withdraw-submit"]',
         popover: {
-            title: "Confirm withdrawal",
-            description: "Submit your request. Funds are sent to your registered bank account.",
+            title: 'Confirm withdrawal',
+            description:
+                'Submit your request. Funds are sent to your registered bank account.',
         },
     },
 ]);
 
 onMounted(() => {
-  loadData();
+    loadData();
 });
 </script>
 
 <template>
+    <Head title="Withdrawal" />
 
-  <Head title="Withdrawal" />
+    <PlayerShell active="withdraw" eyebrow="Wallet" title="Withdraw">
+        <div class="layout">
+            <section class="panel">
+                <div class="panel-head">
+                    <h2>Withdraw funds</h2>
+                    <p class="panel-sub muted">
+                        Send money to your bank account.
+                    </p>
+                </div>
 
-  <PlayerShell active="withdraw" eyebrow="Wallet" title="Withdraw">
-    <div class="layout">
-      <section class="panel">
-        <div class="panel-head">
-          <h2>Withdraw funds</h2>
-          <p class="panel-sub muted">Send money to your bank account.</p>
+                <form @submit.prevent="submit" novalidate>
+                    <div class="field-grid">
+                        <div class="field">
+                            <label for="currency">Currency</label>
+                            <select
+                                id="currency"
+                                v-model="form.currency"
+                                @change="onCurrencyChange"
+                            >
+                                <option
+                                    v-for="currency in currencies"
+                                    :key="currency.currency"
+                                    :value="currency.currency"
+                                >
+                                    {{ currency.currency }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="field">
+                            <label for="bank">Bank</label>
+                            <select id="bank" v-model="form.bank_id">
+                                <option
+                                    v-for="bank in filteredBanks"
+                                    :key="bank.id"
+                                    :value="bank.id"
+                                >
+                                    {{ bank.bank_name }}
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label for="holder_name">Account Holder Name</label>
+                        <input
+                            id="holder_name"
+                            v-model="form.holder_name"
+                            type="text"
+                            placeholder="Account holder name"
+                        />
+                    </div>
+
+                    <div class="field">
+                        <label for="account_no">Account Number</label>
+                        <input
+                            id="account_no"
+                            v-model="form.account_no"
+                            type="text"
+                            placeholder="Bank account number"
+                        />
+                    </div>
+
+                    <div class="field">
+                        <label for="amount">Amount</label>
+                        <div class="amount-input" data-tour="withdraw-amount">
+                            <span class="currency-prefix">{{
+                                form.currency
+                            }}</span>
+                            <input
+                                id="amount"
+                                v-model="form.amount"
+                                type="number"
+                                inputmode="decimal"
+                                step="0.01"
+                                placeholder="0.00"
+                            />
+                        </div>
+                        <p class="hint">
+                            Min {{ limits.min.toFixed(2) }} · Max
+                            {{ limits.max.toFixed(2) }}
+                        </p>
+                        <p v-if="amountError" class="error">
+                            {{ amountError }}
+                        </p>
+                    </div>
+
+                    <p v-if="submitError" class="error submit-error">
+                        {{ submitError }}
+                    </p>
+
+                    <button
+                        type="submit"
+                        class="submit-btn"
+                        data-tour="withdraw-submit"
+                        :disabled="!isValid || submitting"
+                    >
+                        {{ submitting ? 'Processing withdrawal…' : 'Withdraw' }}
+                    </button>
+                </form>
+            </section>
+
+            <aside class="side-card" data-tour="withdraw-summary">
+                <span class="eyebrow muted">Summary</span>
+                <div class="side-row">
+                    <span>Currency</span>
+                    <strong>{{ form.currency || '—' }}</strong>
+                </div>
+                <div class="side-row">
+                    <span>Amount</span>
+                    <strong class="mono">{{
+                        form.amount ? Number(form.amount).toFixed(2) : '0.00'
+                    }}</strong>
+                </div>
+                <div class="side-row">
+                    <span>Beneficiary</span>
+                    <strong>{{ form.holder_name || '—' }}</strong>
+                </div>
+                <div class="side-note">
+                    Withdrawals are subject to review and rate limits before
+                    being sent to the gateway.
+                </div>
+            </aside>
         </div>
-
-        <form @submit.prevent="submit" novalidate>
-          <div class="field-grid">
-            <div class="field">
-              <label for="currency">Currency</label>
-              <select id="currency" v-model="form.currency" @change="onCurrencyChange">
-                <option v-for="currency in currencies" :key="currency.currency" :value="currency.currency">
-                  {{ currency.currency }}
-                </option>
-              </select>
-            </div>
-
-            <div class="field">
-              <label for="bank">Bank</label>
-              <select id="bank" v-model="form.bank_id">
-                <option v-for="bank in filteredBanks" :key="bank.id" :value="bank.id">
-                  {{ bank.bank_name }}
-                </option>
-              </select>
-            </div>
-          </div>
-
-          <div class="field">
-            <label for="holder_name">Account Holder Name</label>
-            <input id="holder_name" v-model="form.holder_name" type="text" placeholder="Account holder name" />
-          </div>
-
-          <div class="field">
-            <label for="account_no">Account Number</label>
-            <input id="account_no" v-model="form.account_no" type="text" placeholder="Bank account number" />
-          </div>
-
-          <div class="field">
-            <label for="amount">Amount</label>
-            <div class="amount-input" data-tour="withdraw-amount">
-              <span class="currency-prefix">{{ form.currency }}</span>
-              <input id="amount" v-model="form.amount" type="number" inputmode="decimal" step="0.01"
-                placeholder="0.00" />
-            </div>
-            <p class="hint">
-              Min {{ limits.min.toFixed(2) }} · Max {{ limits.max.toFixed(2) }}
-            </p>
-            <p v-if="amountError" class="error">{{ amountError }}</p>
-          </div>
-
-          <p v-if="submitError" class="error submit-error">{{ submitError }}</p>
-
-          <button type="submit" class="submit-btn" data-tour="withdraw-submit"
-            :disabled="!isValid || submitting">
-            {{ submitting ? "Processing withdrawal…" : "Withdraw" }}
-          </button>
-        </form>
-      </section>
-
-      <aside class="side-card" data-tour="withdraw-summary">
-        <span class="eyebrow muted">Summary</span>
-        <div class="side-row">
-          <span>Currency</span>
-          <strong>{{ form.currency || '—' }}</strong>
-        </div>
-        <div class="side-row">
-          <span>Amount</span>
-          <strong class="mono">{{ form.amount ? Number(form.amount).toFixed(2) : '0.00' }}</strong>
-        </div>
-        <div class="side-row">
-          <span>Beneficiary</span>
-          <strong>{{ form.holder_name || '—' }}</strong>
-        </div>
-        <div class="side-note">
-          Withdrawals are subject to review and rate limits before being sent to the gateway.
-        </div>
-      </aside>
-    </div>
-  </PlayerShell>
+    </PlayerShell>
 </template>
 
 <style scoped>
 .layout {
-  --ink: #1b2430;
-  --slate: #5b6570;
-  --paper: #fafaf8;
-  --hairline: #e4e1d8;
-  --signal: #2454ff;
-  --failed: #c9432c;
+    --ink: #1b2430;
+    --slate: #5b6570;
+    --paper: #fafaf8;
+    --hairline: #e4e1d8;
+    --signal: #2454ff;
+    --failed: #c9432c;
 
-  display: grid;
-  grid-template-columns: 1fr 300px;
-  gap: 20px;
-  align-items: start;
-  color: var(--ink);
-  font-family: "Inter", system-ui, sans-serif;
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 20px;
+    align-items: start;
+    color: var(--ink);
+    font-family: 'Inter', system-ui, sans-serif;
 }
 
 .panel {
-  background: white;
-  border: 1px solid var(--hairline);
-  border-radius: 14px;
-  padding: 26px 28px;
+    background: white;
+    border: 1px solid var(--hairline);
+    border-radius: 14px;
+    padding: 26px 28px;
 }
 
 .panel-head {
-  margin-bottom: 22px;
+    margin-bottom: 22px;
 }
 
 .panel-head h2 {
-  font-size: 18px;
-  font-weight: 600;
-  margin: 0 0 4px;
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 4px;
 }
 
 .panel-sub {
-  font-size: 13px;
-  margin: 0;
+    font-size: 13px;
+    margin: 0;
 }
 
 .eyebrow {
-  font-family: "JetBrains Mono", monospace;
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
 }
 
 .muted {
-  color: var(--slate);
+    color: var(--slate);
 }
 
 .mono {
-  font-family: "JetBrains Mono", monospace;
+    font-family: 'JetBrains Mono', monospace;
 }
 
 .side-card {
-  background: white;
-  border: 1px solid var(--hairline);
-  border-radius: 14px;
-  padding: 22px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+    background: white;
+    border: 1px solid var(--hairline);
+    border-radius: 14px;
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
 .side-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 13px;
-  color: var(--slate);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--slate);
 }
 
 .side-row strong {
-  color: var(--ink);
-  font-weight: 600;
-  text-align: right;
+    color: var(--ink);
+    font-weight: 600;
+    text-align: right;
 }
 
 .side-note {
-  margin-top: 6px;
-  padding-top: 14px;
-  border-top: 1px solid var(--hairline);
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--slate);
+    margin-top: 6px;
+    padding-top: 14px;
+    border-top: 1px solid var(--hairline);
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--slate);
 }
 
 .field-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
 }
 
 .field {
-  margin-bottom: 20px;
+    margin-bottom: 20px;
 }
 
 label {
-  display: block;
-  font-size: 13px;
-  font-weight: 500;
-  margin-bottom: 6px;
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 6px;
 }
 
 select,
 input {
-  width: 100%;
-  padding: 11px 12px;
-  border: 1px solid var(--hairline);
-  border-radius: 6px;
-  font-size: 14px;
-  font-family: inherit;
-  background: white;
-  color: var(--ink);
+    width: 100%;
+    padding: 11px 12px;
+    border: 1px solid var(--hairline);
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    background: white;
+    color: var(--ink);
 }
 
 select:focus,
 input:focus {
-  outline: 2px solid var(--signal);
-  outline-offset: 1px;
-  border-color: var(--signal);
+    outline: 2px solid var(--signal);
+    outline-offset: 1px;
+    border-color: var(--signal);
 }
 
 .amount-input {
-  display: flex;
-  align-items: center;
-  border: 1px solid var(--hairline);
-  border-radius: 6px;
-  overflow: hidden;
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--hairline);
+    border-radius: 6px;
+    overflow: hidden;
 }
 
 .amount-input:focus-within {
-  outline: 2px solid var(--signal);
-  outline-offset: 1px;
-  border-color: var(--signal);
+    outline: 2px solid var(--signal);
+    outline-offset: 1px;
+    border-color: var(--signal);
 }
 
 .currency-prefix {
-  padding: 0 12px;
-  font-family: "JetBrains Mono", monospace;
-  font-size: 13px;
-  color: var(--slate);
-  border-right: 1px solid var(--hairline);
-  align-self: stretch;
-  display: flex;
-  align-items: center;
+    padding: 0 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--slate);
+    border-right: 1px solid var(--hairline);
+    align-self: stretch;
+    display: flex;
+    align-items: center;
 }
 
 .amount-input input {
-  border: none;
-  border-radius: 0;
+    border: none;
+    border-radius: 0;
 }
 
 .amount-input input:focus {
-  outline: none;
+    outline: none;
 }
 
 .hint {
-  font-size: 12px;
-  color: var(--slate);
-  margin: 6px 0 0;
+    font-size: 12px;
+    color: var(--slate);
+    margin: 6px 0 0;
 }
 
 .error {
-  color: var(--failed);
-  font-size: 12px;
-  margin: 6px 0 0;
+    color: var(--failed);
+    font-size: 12px;
+    margin: 6px 0 0;
 }
 
 .submit-error {
-  margin: 0 0 16px;
+    margin: 0 0 16px;
 }
 
 .submit-btn {
-  width: 100%;
-  padding: 12px;
-  background: var(--signal);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
+    width: 100%;
+    padding: 12px;
+    background: var(--signal);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
 }
 
 .submit-btn:hover:not(:disabled) {
-  background: #1c40cc;
+    background: #1c40cc;
 }
 
 .submit-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
+    opacity: 0.5;
+    cursor: default;
 }
 
 @media (max-width: 820px) {
-  .layout {
-    grid-template-columns: 1fr;
-  }
+    .layout {
+        grid-template-columns: 1fr;
+    }
 
-  .field-grid {
-    grid-template-columns: 1fr;
-  }
+    .field-grid {
+        grid-template-columns: 1fr;
+    }
 }
 </style>

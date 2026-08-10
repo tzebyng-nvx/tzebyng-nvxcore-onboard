@@ -8,6 +8,9 @@ readonly class PaymentGatewayCurrencyRequestDto
         public string $username
     ) {}
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         return [
