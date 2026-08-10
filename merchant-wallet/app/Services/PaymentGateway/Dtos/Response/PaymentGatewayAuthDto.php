@@ -11,7 +11,7 @@ readonly class PaymentGatewayAuthDto
     ) {}
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     public static function fromApi(array $data): self
     {
