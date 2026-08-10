@@ -6,6 +6,7 @@ use App\Http\Requests\UpdatePaymentGatewaySettingsRequest;
 use App\Services\PaymentGateway\Contracts\PaymentGatewayContract;
 use App\Services\PaymentGatewaySettingsService;
 use Exception;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class PaymentGatewaySettingsController extends Controller
@@ -31,6 +32,26 @@ class PaymentGatewaySettingsController extends Controller
         } catch (Exception $e) {
             return response()->json([
                 'error' => 'Failed to retrieve gateway float balance',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Sync (fetch) the current deposit + withdraw bank lists from the gateway.
+     */
+    public function syncBankList(Request $request, PaymentGatewayContract $paymentGatewayService): JsonResponse
+    {
+        try {
+            $currency = (string) $request->query('currency', 'MYR');
+
+            return response()->json([
+                'deposit' => $paymentGatewayService->getBankList('deposit', ['currency' => $currency])->data,
+                'withdraw' => $paymentGatewayService->getBankList('withdraw', ['currency' => $currency])->data,
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'error' => 'Failed to sync bank list',
                 'message' => $e->getMessage(),
             ], 500);
         }

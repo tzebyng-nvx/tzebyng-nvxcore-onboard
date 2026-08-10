@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\RoleName;
 use App\Http\Requests\RegisterRequest;
 use App\Models\User;
+use App\Services\AccessControlService;
 use App\Services\WalletService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controllers\HasMiddleware;
@@ -71,6 +73,9 @@ class AuthController extends Controller implements HasMiddleware
         ]);
 
         app(WalletService::class)->getOrCreateWallet($user->id);
+
+        // Self-registration is player-only; grant the end-user role.
+        app(AccessControlService::class)->assign($user, RoleName::EndUser);
 
         return $this->respondWithToken($this->guard()->login($user));
     }
