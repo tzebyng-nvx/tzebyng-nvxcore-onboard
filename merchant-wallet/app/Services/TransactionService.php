@@ -32,6 +32,35 @@ class TransactionService
     }
 
     /**
+     * Every transaction in the tenant (admin view), paginated + filtered.
+     *
+     * @param  array{type?:string|null,status?:string|null}  $filters
+     */
+    public function getAllTransactions(
+        int $perPage = 20,
+        array $filters = []
+    ): LengthAwarePaginator {
+        return $this->transactionRepository->paginateAll($perPage, $filters);
+    }
+
+    /**
+     * Tenant-wide payment summary for the admin dashboard.
+     *
+     * @return array{total_payments:int,total_pending:int,total_successful:int,currency:string}
+     */
+    public function getGeneralInfo(string $currency = 'MYR'): array
+    {
+        $counts = $this->transactionRepository->countByStatus();
+
+        return [
+            'total_payments' => array_sum($counts),
+            'total_pending' => $counts[TransactionStatus::Pending->value] ?? 0,
+            'total_successful' => $counts[TransactionStatus::Success->value] ?? 0,
+            'currency' => $currency,
+        ];
+    }
+
+    /**
      * Total successful money in (deposits) and out (withdrawals) for a user.
      *
      * @return array{total_in:string,total_out:string}
