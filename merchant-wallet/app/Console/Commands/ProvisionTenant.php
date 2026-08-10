@@ -2,9 +2,11 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\RoleName;
 use App\Models\Admin;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\AccessControlService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
 
@@ -57,7 +59,9 @@ class ProvisionTenant extends Command
             $adminPhone,
             $adminPassword
         ) {
-            User::query()->firstOrCreate([
+            $access = app(AccessControlService::class);
+
+            $user = User::query()->firstOrCreate([
                 'email' => $userEmail,
             ], [
                 'name' => $userName,
@@ -65,13 +69,16 @@ class ProvisionTenant extends Command
                 'password' => Hash::make($userPassword),
             ]);
 
-            Admin::query()->firstOrCreate([
+            $admin = Admin::query()->firstOrCreate([
                 'email' => $adminEmail,
             ], [
                 'name' => $adminName,
                 'phone_number' => $adminPhone,
                 'password' => Hash::make($adminPassword),
             ]);
+
+            $access->assign($user, RoleName::EndUser);
+            $access->assign($admin, RoleName::TenantAdmin);
         });
 
         $this->info("Tenant [$tenantId] provisioned for [$domain].");
