@@ -32,8 +32,9 @@ cp .env.example .env
 # 2. install deps, generate key, create the central DB, migrate, build assets
 composer setup
 
-# 3. seed a demo tenant (id `demo`, domain demo.merchant-wallet.test)
-#    + a central platform admin
+# 3. seed a demo tenant (id `demo`) + a central platform admin.
+#    The tenant domain is derived from APP_URL's host — `demo.merchant-wallet.test`
+#    under Herd, or `demo.localhost` when APP_URL is http://localhost:8000.
 php artisan db:seed
 ```
 
@@ -49,6 +50,8 @@ have `CREATEDB` privilege. Run it standalone any time with:
 ```bash
 php artisan db:create-central          # create if missing (no-op if it exists)
 php artisan db:create-central --force  # drop and recreate (destroys central data)
+
+# explanation only, no need to run, it's including in the composer setup command
 ```
 
 Per-tenant databases are created automatically by `stancl/tenancy` when a tenant
@@ -88,28 +91,36 @@ ngrok http --url=<your-subdomain>.ngrok-free.dev \
   https://merchant-wallet.test:443 --host-header=merchant-wallet.test
 ```
 
----
+### Local dev without Herd (`composer dev` + ngrok)
 
-## Creating a test tenant
-
-Provision a tenant with an initial user and admin in one command:
-
-```bash
-php artisan tenant:provision acme acme.merchant-wallet.test \
-  --user-name="Acme User"   --user-email="user@acme.test"   --user-phone="0123456789" --user-password="secret" \
-  --admin-name="Acme Admin" --admin-email="admin@acme.test" --admin-phone="0987654321" --admin-password="secret"
-```
-
-This creates the tenant record + domain mapping, provisions the tenant database,
-and seeds a tenant user and tenant admin.
-
-Platform (central back-office) admin:
+`composer dev` runs `php artisan serve` (plus Vite, queue worker and logs) on
+`http://localhost:8000`. The ngrok command above is written for Herd's TLS
+vhost — for the `artisan serve` port use the simpler form instead:
 
 ```bash
-php artisan platform:create-admin \
-  --name="Platform Admin" --email="admin@platform.test" \
-  --phone="0123456789" --password="secret"
+ngrok http 8000
 ```
+
+Then point the callback at the tunnel in `.env`:
+
+```
+PAYMENT_CALLBACK_URL=https://<your-subdomain>.ngrok-free.dev/api/payment/callback
+```
+
+Notes for this mode:
+
+- **The callback self-resolves its tenant**, so no subdomain/`X-Tenant` is
+  needed on the public URL: `/api/payment/callback` is a central route that looks
+  the `payment_transaction` up in the central DB and calls
+  `tenancy()->initialize($tenant_id)` itself
+  (`PaymentCallbackService`). Plain `ngrok http 8000` is enough.
+- **A queue worker must be running** — the callback is dispatched as
+  `ProcessPaymentCallbackJob`. `composer dev` starts one; if you run
+  `php artisan serve` on its own, also run `php artisan queue:work`.
+- **Domain-based tenant resolution needs Herd.** The browser player/admin UI
+  resolves tenancy by subdomain (`demo.merchant-wallet.test`), which isn't
+  reachable over `localhost:8000`. Use Herd for the web UI, or test the API
+  directly with the `X-Tenant` header. The callback works either way.
 
 ---
 

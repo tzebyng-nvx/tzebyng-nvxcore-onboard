@@ -38,7 +38,14 @@ class DatabaseSeeder extends Seeder
         );
 
         $tenantId = 'demo';
-        $domain = 'demo.merchant-wallet.test';
+
+        // Build the tenant domain from APP_URL's host so it matches however the
+        // app is served: Herd (APP_URL=https://merchant-wallet.test) yields
+        // `demo.merchant-wallet.test`, while local `artisan serve`
+        // (APP_URL=http://localhost:8000) yields `demo.localhost`
+        // (`*.localhost` resolves to 127.0.0.1 on most systems).
+        $centralHost = parse_url((string) config('app.url'), PHP_URL_HOST) ?: 'localhost';
+        $domain = "{$tenantId}.{$centralHost}";
 
         $tenant = Tenant::firstOrCreate(['id' => $tenantId]);
         $tenant->domains()->firstOrCreate(['domain' => $domain]);
@@ -89,13 +96,24 @@ class DatabaseSeeder extends Seeder
             return;
         }
 
+        // Match the scheme/host/port the app is actually served on so the printed
+        // login URLs are clickable in both Herd and local `artisan serve` setups.
+        $appUrl = (string) config('app.url');
+        $scheme = parse_url($appUrl, PHP_URL_SCHEME) ?: 'http';
+        $centralHost = parse_url($appUrl, PHP_URL_HOST) ?: 'localhost';
+        $port = parse_url($appUrl, PHP_URL_PORT);
+        $portSuffix = $port ? ":{$port}" : '';
+
+        $centralBase = "{$scheme}://{$centralHost}{$portSuffix}";
+        $tenantBase = "{$scheme}://{$domain}{$portSuffix}";
+
         $this->command->info("Seeded tenant [{$tenantId}] at [{$domain}].");
         $this->command->table(
             ['Role', 'Scope', 'Login URL', 'Email', 'Password'],
             [
-                ['Platform admin', 'central', 'http://merchant-wallet.test/login', 'platform@example.com', 'password'],
-                ['Tenant admin', $tenantId, "http://{$domain}/admin/login", 'admin@demo.test', 'password'],
-                ['Player', $tenantId, "http://{$domain}/login", 'player@demo.test', 'password'],
+                ['Platform admin', 'central', "{$centralBase}/login", 'platform@example.com', 'password'],
+                ['Tenant admin', $tenantId, "{$tenantBase}/admin/login", 'admin@demo.test', 'password'],
+                ['Player', $tenantId, "{$tenantBase}/login", 'player@demo.test', 'password'],
             ],
         );
     }
