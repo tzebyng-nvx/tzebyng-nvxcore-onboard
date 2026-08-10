@@ -1,69 +1,70 @@
 <script setup lang="ts">
+import ToastHost from "@/components/ToastHost.vue";
 import { activeTour } from "@/composables/tourController";
+import { adminAuthHeaders } from "@/utils/authHeaders";
 import { router } from "@inertiajs/vue3";
 import { onMounted } from "vue";
 
 defineProps<{
-  active: "overview" | "deposit" | "withdraw" | "transaction";
+  active: "overview" | "transactions" | "users" | "gateway";
   eyebrow?: string;
   title: string;
 }>();
 
 function isTokenExpired(): boolean {
-  const expiresAt = localStorage.getItem("expires_at");
+  const expiresAt = localStorage.getItem("admin_expires_at");
   if (!expiresAt) return true;
   return Date.now() >= Number(expiresAt);
 }
 
 async function logout() {
   try {
-    await fetch("api/logout", {
+    await fetch("/api/admin/logout", {
       method: "POST",
-      headers: {
-        Accept: "application/json",
-        Authorization: `${localStorage.getItem("token_type") ?? "Bearer"} ${localStorage.getItem("access_token") ?? ""}`,
-        "X-Tenant": window.location.hostname.split(".")[0],
-      },
+      headers: adminAuthHeaders(),
     });
   } catch (e) { }
 
-  localStorage.removeItem("access_token");
-  localStorage.removeItem("token_type");
-  localStorage.removeItem("expires_at");
+  localStorage.removeItem("admin_access_token");
+  localStorage.removeItem("admin_token_type");
+  localStorage.removeItem("admin_expires_at");
 
-  router.visit("/login");
+  router.visit("/admin/login");
 }
 
 onMounted(() => {
   if (isTokenExpired()) {
-    router.visit("/login");
+    router.visit("/admin/login");
   }
 });
 </script>
 
 <template>
   <div class="app">
+    <ToastHost />
+
     <!-- Sidebar -->
     <aside class="sidebar">
       <div class="brand">
         <span class="brand-mark">◆</span>
-        <span class="brand-name">Ledger</span>
+        <span class="brand-name">Ledger · Admin</span>
       </div>
 
       <nav class="nav">
         <span class="nav-label">Menu</span>
-        <button class="nav-item" :class="{ 'is-active': active === 'overview' }" @click="router.visit('/dashboard')">
+        <button class="nav-item" :class="{ 'is-active': active === 'overview' }" @click="router.visit('/admin/dashboard')">
           <span class="nav-icon">▣</span> Overview
         </button>
-        <button class="nav-item" :class="{ 'is-active': active === 'deposit' }" @click="router.visit('/deposit')">
-          <span class="nav-icon">↓</span> Deposit
-        </button>
-        <button class="nav-item" :class="{ 'is-active': active === 'withdraw' }" @click="router.visit('/withdraw')">
-          <span class="nav-icon">↑</span> Withdraw
-        </button>
-        <button class="nav-item" :class="{ 'is-active': active === 'transaction' }"
-          @click="router.visit('/transaction')">
+        <button class="nav-item" :class="{ 'is-active': active === 'transactions' }"
+          @click="router.visit('/admin/transactions')">
           <span class="nav-icon">≣</span> Transactions
+        </button>
+        <button class="nav-item" :class="{ 'is-active': active === 'users' }" @click="router.visit('/admin/users')">
+          <span class="nav-icon">◦</span> Users
+        </button>
+        <button class="nav-item" :class="{ 'is-active': active === 'gateway' }"
+          @click="router.visit('/admin/gateway-settings')">
+          <span class="nav-icon">⚙</span> Gateway
         </button>
       </nav>
 
@@ -76,7 +77,7 @@ onMounted(() => {
     <main class="workspace">
       <header class="workspace-header">
         <div>
-          <span class="eyebrow muted">{{ eyebrow ?? 'Wallet' }}</span>
+          <span class="eyebrow muted">{{ eyebrow ?? 'Admin' }}</span>
           <h1>{{ title }}</h1>
         </div>
         <div class="header-actions">
@@ -138,8 +139,8 @@ onMounted(() => {
 
 .brand-name {
   font-family: "JetBrains Mono", monospace;
-  font-size: 14px;
-  letter-spacing: 0.08em;
+  font-size: 13px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--paper);
 }

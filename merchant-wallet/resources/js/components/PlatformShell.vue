@@ -1,13 +1,22 @@
 <script setup lang="ts">
-import { activeTour } from "@/composables/tourController";
 import { router } from "@inertiajs/vue3";
 import { onMounted } from "vue";
 
 defineProps<{
-  active: "overview" | "deposit" | "withdraw" | "transaction";
+  active: "tenants";
   eyebrow?: string;
   title: string;
 }>();
+
+function authHeaders(): HeadersInit {
+  const token = localStorage.getItem("access_token") ?? "";
+  const tokenType = localStorage.getItem("token_type") ?? "Bearer";
+  return {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+    Authorization: `${tokenType} ${token}`,
+  };
+}
 
 function isTokenExpired(): boolean {
   const expiresAt = localStorage.getItem("expires_at");
@@ -17,13 +26,9 @@ function isTokenExpired(): boolean {
 
 async function logout() {
   try {
-    await fetch("api/logout", {
+    await fetch("/api/platform/logout", {
       method: "POST",
-      headers: {
-        Accept: "application/json",
-        Authorization: `${localStorage.getItem("token_type") ?? "Bearer"} ${localStorage.getItem("access_token") ?? ""}`,
-        "X-Tenant": window.location.hostname.split(".")[0],
-      },
+      headers: authHeaders(),
     });
   } catch (e) { }
 
@@ -47,23 +52,13 @@ onMounted(() => {
     <aside class="sidebar">
       <div class="brand">
         <span class="brand-mark">◆</span>
-        <span class="brand-name">Ledger</span>
+        <span class="brand-name">Ledger · Platform</span>
       </div>
 
       <nav class="nav">
         <span class="nav-label">Menu</span>
-        <button class="nav-item" :class="{ 'is-active': active === 'overview' }" @click="router.visit('/dashboard')">
-          <span class="nav-icon">▣</span> Overview
-        </button>
-        <button class="nav-item" :class="{ 'is-active': active === 'deposit' }" @click="router.visit('/deposit')">
-          <span class="nav-icon">↓</span> Deposit
-        </button>
-        <button class="nav-item" :class="{ 'is-active': active === 'withdraw' }" @click="router.visit('/withdraw')">
-          <span class="nav-icon">↑</span> Withdraw
-        </button>
-        <button class="nav-item" :class="{ 'is-active': active === 'transaction' }"
-          @click="router.visit('/transaction')">
-          <span class="nav-icon">≣</span> Transactions
+        <button class="nav-item" :class="{ 'is-active': active === 'tenants' }" @click="router.visit('/dashboard')">
+          <span class="nav-icon">▣</span> Tenants
         </button>
       </nav>
 
@@ -76,14 +71,10 @@ onMounted(() => {
     <main class="workspace">
       <header class="workspace-header">
         <div>
-          <span class="eyebrow muted">{{ eyebrow ?? 'Wallet' }}</span>
+          <span class="eyebrow muted">{{ eyebrow ?? 'Platform' }}</span>
           <h1>{{ title }}</h1>
         </div>
         <div class="header-actions">
-          <button v-if="activeTour" class="tour-btn" title="Take a guided tour of this page"
-            @click="activeTour()">
-            <span class="nav-icon">?</span> Tour
-          </button>
           <slot name="actions" />
         </div>
       </header>
@@ -138,8 +129,8 @@ onMounted(() => {
 
 .brand-name {
   font-family: "JetBrains Mono", monospace;
-  font-size: 14px;
-  letter-spacing: 0.08em;
+  font-size: 13px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--paper);
 }
@@ -250,25 +241,6 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.tour-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: white;
-  border: 1px solid var(--hairline);
-  border-radius: 8px;
-  padding: 8px 14px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--slate);
-  cursor: pointer;
-}
-
-.tour-btn:hover {
-  border-color: var(--signal);
-  color: var(--signal);
 }
 
 @media (max-width: 900px) {
