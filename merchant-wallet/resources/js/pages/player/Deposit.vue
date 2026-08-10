@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import PlayerShell from "@/components/PlayerShell.vue";
+import { useTour } from "@/composables/useTour";
 import { Head, router } from "@inertiajs/vue3";
 import { computed, onMounted, reactive, ref } from "vue";
 
@@ -217,6 +218,23 @@ async function loadData() {
   }
 }
 
+useTour("player-deposit", [
+    {
+        element: '[data-tour="deposit-amount"]',
+        popover: {
+            title: "Enter an amount",
+            description: "Choose how much you want to add to your wallet.",
+        },
+    },
+    {
+        element: '[data-tour="deposit-submit"]',
+        popover: {
+            title: "Confirm deposit",
+            description: "Submit to be taken to the payment gateway and complete your top-up.",
+        },
+    },
+]);
+
 onMounted(() => {
   loadData();
 });
@@ -267,7 +285,7 @@ onMounted(() => {
 
             <div class="field">
               <label for="amount">Amount</label>
-              <div class="amount-input">
+              <div class="amount-input" data-tour="deposit-amount">
                 <span class="currency-prefix">{{ form.currency }}</span>
                 <input id="amount" v-model="form.amount" type="number" inputmode="decimal" step="0.01"
                   placeholder="0.00" autocomplete="off" :disabled="loading" />
@@ -281,7 +299,8 @@ onMounted(() => {
 
           <p v-if="submitError" class="error submit-error">{{ submitError }}</p>
 
-          <button type="submit" class="submit-btn" :disabled="!isValid || submitting || loading">
+          <button type="submit" class="submit-btn" data-tour="deposit-submit"
+            :disabled="!isValid || submitting || loading">
             {{ submitting ? "Starting deposit…" : "Continue to payment" }}
           </button>
         </form>

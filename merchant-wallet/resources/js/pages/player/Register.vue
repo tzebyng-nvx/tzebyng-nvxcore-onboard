@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { email as emailRule, type Errors, maxLength, minLength, required, validate } from "@/utils/validation";
 import { Head, router } from "@inertiajs/vue3";
 import { reactive, ref } from "vue";
 
@@ -13,6 +14,26 @@ const form = reactive({
 const submitting = ref(false);
 const authError = ref<string | null>(null);
 const fieldErrors = ref<Record<string, string[]>>({});
+const clientErrors = ref<Errors>({});
+
+function validateForm(): boolean {
+  clientErrors.value = validate(form, {
+    name: [required("Full name is required."), maxLength(255)],
+    email: [required("Email is required."), emailRule(), maxLength(255)],
+    phone_number: [required("Phone number is required."), maxLength(30)],
+    password: [required("Password is required."), minLength(6, "Password must be at least 6 characters.")],
+    password_confirmation: [required("Please confirm your password.")],
+  });
+
+  if (
+    !clientErrors.value.password_confirmation &&
+    form.password !== form.password_confirmation
+  ) {
+    clientErrors.value.password_confirmation = "Passwords do not match.";
+  }
+
+  return Object.keys(clientErrors.value).length === 0;
+}
 
 interface RegisterResponse {
   access_token: string;
@@ -21,6 +42,10 @@ interface RegisterResponse {
 }
 
 async function submit() {
+  if (!validateForm()) {
+    return;
+  }
+
   submitting.value = true;
   authError.value = null;
   fieldErrors.value = {};
@@ -67,7 +92,7 @@ async function submit() {
 }
 
 function fieldError(name: string): string | null {
-  return fieldErrors.value[name]?.[0] ?? null;
+  return clientErrors.value[name] ?? fieldErrors.value[name]?.[0] ?? null;
 }
 </script>
 
@@ -106,32 +131,39 @@ function fieldError(name: string): string | null {
         <form @submit.prevent="submit" novalidate>
           <div class="field">
             <label for="name">Full name</label>
-            <input id="name" v-model="form.name" type="text" autocomplete="name" autofocus required />
+            <input id="name" v-model="form.name" type="text" autocomplete="name" autofocus
+              :class="{ 'is-invalid': fieldError('name') }" />
             <p v-if="fieldError('name')" class="error">{{ fieldError('name') }}</p>
           </div>
 
           <div class="field">
             <label for="email">Email</label>
-            <input id="email" v-model="form.email" type="email" autocomplete="username" required />
+            <input id="email" v-model="form.email" type="email" autocomplete="username"
+              :class="{ 'is-invalid': fieldError('email') }" />
             <p v-if="fieldError('email')" class="error">{{ fieldError('email') }}</p>
           </div>
 
           <div class="field">
             <label for="phone">Phone number</label>
-            <input id="phone" v-model="form.phone_number" type="tel" autocomplete="tel" required />
+            <input id="phone" v-model="form.phone_number" type="tel" autocomplete="tel"
+              :class="{ 'is-invalid': fieldError('phone_number') }" />
             <p v-if="fieldError('phone_number')" class="error">{{ fieldError('phone_number') }}</p>
           </div>
 
           <div class="field">
             <label for="password">Password</label>
-            <input id="password" v-model="form.password" type="password" autocomplete="new-password" required />
+            <input id="password" v-model="form.password" type="password" autocomplete="new-password"
+              :class="{ 'is-invalid': fieldError('password') }" />
             <p v-if="fieldError('password')" class="error">{{ fieldError('password') }}</p>
           </div>
 
           <div class="field">
             <label for="password_confirmation">Confirm password</label>
             <input id="password_confirmation" v-model="form.password_confirmation" type="password"
-              autocomplete="new-password" required />
+              autocomplete="new-password" :class="{ 'is-invalid': fieldError('password_confirmation') }" />
+            <p v-if="fieldError('password_confirmation')" class="error">
+              {{ fieldError('password_confirmation') }}
+            </p>
           </div>
 
           <p v-if="authError" class="error auth-error">{{ authError }}</p>
@@ -311,6 +343,15 @@ input:focus {
   outline: 2px solid var(--signal);
   outline-offset: 1px;
   border-color: var(--signal);
+}
+
+input.is-invalid {
+  border-color: var(--failed);
+}
+
+input.is-invalid:focus {
+  outline-color: var(--failed);
+  border-color: var(--failed);
 }
 
 .error {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import PlayerShell from "@/components/PlayerShell.vue";
+import { useTour } from "@/composables/useTour";
 import { Head, router } from "@inertiajs/vue3";
 import { computed, onMounted, reactive, ref } from "vue";
 
@@ -181,6 +182,30 @@ function updateLimits() {
   limits.max = selected.max;
 }
 
+useTour("player-withdraw", [
+    {
+        element: '[data-tour="withdraw-amount"]',
+        popover: {
+            title: "Amount to withdraw",
+            description: "Enter how much you'd like to send to your bank account.",
+        },
+    },
+    {
+        element: '[data-tour="withdraw-summary"]',
+        popover: {
+            title: "Summary",
+            description: "Review the details of your withdrawal before submitting.",
+        },
+    },
+    {
+        element: '[data-tour="withdraw-submit"]',
+        popover: {
+            title: "Confirm withdrawal",
+            description: "Submit your request. Funds are sent to your registered bank account.",
+        },
+    },
+]);
+
 onMounted(() => {
   loadData();
 });
@@ -231,7 +256,7 @@ onMounted(() => {
 
           <div class="field">
             <label for="amount">Amount</label>
-            <div class="amount-input">
+            <div class="amount-input" data-tour="withdraw-amount">
               <span class="currency-prefix">{{ form.currency }}</span>
               <input id="amount" v-model="form.amount" type="number" inputmode="decimal" step="0.01"
                 placeholder="0.00" />
@@ -244,13 +269,14 @@ onMounted(() => {
 
           <p v-if="submitError" class="error submit-error">{{ submitError }}</p>
 
-          <button type="submit" class="submit-btn" :disabled="!isValid || submitting">
+          <button type="submit" class="submit-btn" data-tour="withdraw-submit"
+            :disabled="!isValid || submitting">
             {{ submitting ? "Processing withdrawal…" : "Withdraw" }}
           </button>
         </form>
       </section>
 
-      <aside class="side-card">
+      <aside class="side-card" data-tour="withdraw-summary">
         <span class="eyebrow muted">Summary</span>
         <div class="side-row">
           <span>Currency</span>

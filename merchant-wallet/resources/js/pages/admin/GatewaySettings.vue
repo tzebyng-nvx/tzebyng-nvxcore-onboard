@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import AdminShell from "@/components/AdminShell.vue";
+import { useToast } from "@/composables/useToast";
+import { useTour } from "@/composables/useTour";
 import { adminAuthHeaders } from "@/utils/authHeaders";
-import { router } from "@inertiajs/vue3";
-import { onMounted, reactive, ref } from 'vue';
+import { type Errors, maxLength, required, url, validate } from "@/utils/validation";
+import { Head } from "@inertiajs/vue3";
+import { onMounted, reactive, ref } from "vue";
 
 const form = reactive({
     merchant_username: "",
@@ -14,7 +18,78 @@ const loading = ref(true);
 const saving = ref(false);
 const loadError = ref<string | null>(null);
 const formError = ref<string | null>(null);
+const fieldErrors = ref<Errors>({});
 const showSecret = ref(false);
+
+const { showToast } = useToast();
+
+function validateForm(): boolean {
+    fieldErrors.value = validate(form, {
+        merchant_username: [required("Merchant username is required."), maxLength(255)],
+        api_key: [required("API key is required."), maxLength(255)],
+        secret_key: [required("Secret key is required."), maxLength(255)],
+        base_url: [required("Base URL is required."), url(), maxLength(255)],
+    });
+    return Object.keys(fieldErrors.value).length === 0;
+}
+
+useTour("admin-gateway-v2", [
+    {
+        element: '[data-tour="gateway-form"]',
+        popover: {
+            title: "Payment gateway settings",
+            description:
+                "These credentials connect your tenant to the payment gateway. They power every deposit and withdrawal, so keep them accurate and private.",
+        },
+    },
+    {
+        element: "#merchant_username",
+        popover: {
+            title: "Merchant username",
+            description:
+                "Your merchant account identifier at the gateway. Find it in your gateway dashboard under account or API settings.",
+        },
+    },
+    {
+        element: "#api_key",
+        popover: {
+            title: "API key",
+            description:
+                "The public key that identifies your integration on each request to the gateway.",
+        },
+    },
+    {
+        element: "#secret_key",
+        popover: {
+            title: "Secret key",
+            description:
+                "The private key used to sign requests. Treat it like a password — use “Show” to reveal it only when you need to verify it.",
+        },
+    },
+    {
+        element: '[data-tour="secret-toggle"]',
+        popover: {
+            title: "Show / hide secret",
+            description: "Toggle visibility of the secret key while editing.",
+        },
+    },
+    {
+        element: "#base_url",
+        popover: {
+            title: "Base URL",
+            description:
+                "The gateway endpoint requests are sent to. Use the sandbox URL while testing and the live URL in production.",
+        },
+    },
+    {
+        element: '[data-tour="gateway-save"]',
+        popover: {
+            title: "Save settings",
+            description:
+                "Store your changes. They take effect immediately for all new transactions in this tenant.",
+        },
+    },
+]);
 
 onMounted(async () => {
     await loadSettings();
@@ -47,6 +122,10 @@ async function loadSettings() {
 }
 
 async function save() {
+    if (!validateForm()) {
+        return;
+    }
+
     saving.value = true;
     formError.value = null;
 
@@ -66,8 +145,10 @@ async function save() {
         if (!response.ok) {
             const body = await response.json().catch(() => null);
 
-            formError.value =
-                body?.message ?? "Failed to save settings";
+            const message = body?.message ?? "Failed to save settings";
+            formError.value = message;
+
+            showToast(message, "error");
 
             return;
         }
@@ -75,8 +156,11 @@ async function save() {
         const data = await response.json();
         Object.assign(form, data);
 
+        showToast("Gateway settings saved.", "success");
+
     } catch (error) {
         formError.value = "Something went wrong. Please try again.";
+        showToast("Something went wrong. Please try again.", "error");
     } finally {
         saving.value = false;
     }
@@ -87,21 +171,8 @@ async function save() {
 
     <Head title="Payment Gateway Settings" />
 
-    <div class="page">
-        <header class="topbar">
-            <button class="back-btn" @click="router.visit('/admin/dashboard')">
-                ← Admin dashboard
-            </button>
-        </header>
-
-        <main class="content">
-            <div class="page-header">
-                <div>
-                    <span class="eyebrow">Sandbox gateway</span>
-                    <h1>Payment gateway settings</h1>
-                </div>
-            </div>
-
+    <AdminShell active="gateway" eyebrow="Back office" title="Gateway settings">
+        <div class="settings-card">
             <p v-if="loadError" class="error">{{ loadError }}</p>
             <p v-if="formError" class="error">{{ formError }}</p>
 
@@ -109,50 +180,59 @@ async function save() {
                 Loading…
             </div>
 
-            <form v-else @submit.prevent="save" class="settings-form" novalidate>
+            <form v-else @submit.prevent="save" class="settings-form" data-tour="gateway-form" novalidate>
                 <div class="field">
                     <label for="merchant_username">Merchant username</label>
                     <input id="merchant_username" v-model="form.merchant_username" type="text" autocomplete="off"
-                        required />
+                        :class="{ 'is-invalid': fieldErrors.merchant_username }" />
+                    <span v-if="fieldErrors.merchant_username" class="field-error">
+                        {{ fieldErrors.merchant_username }}
+                    </span>
                 </div>
 
                 <div class="field">
                     <label for="api_key">API key</label>
-                    <input id="api_key" v-model="form.api_key" type="text" autocomplete="off" required />
+                    <input id="api_key" v-model="form.api_key" type="text" autocomplete="off"
+                        :class="{ 'is-invalid': fieldErrors.api_key }" />
+                    <span v-if="fieldErrors.api_key" class="field-error">{{ fieldErrors.api_key }}</span>
                 </div>
 
                 <div class="field">
                     <div class="field-row">
                         <label for="secret_key">Secret key</label>
 
-                        <button type="button" class="link-btn" @click="showSecret = !showSecret">
+                        <button type="button" class="link-btn" data-tour="secret-toggle"
+                            @click="showSecret = !showSecret">
                             {{ showSecret ? "Hide" : "Show" }}
                         </button>
                     </div>
 
                     <input id="secret_key" v-model="form.secret_key" :type="showSecret ? 'text' : 'password'"
-                        autocomplete="off" required />
+                        autocomplete="off" :class="{ 'is-invalid': fieldErrors.secret_key }" />
+                    <span v-if="fieldErrors.secret_key" class="field-error">{{ fieldErrors.secret_key }}</span>
                 </div>
 
                 <div class="field">
                     <label for="base_url">Base URL</label>
 
                     <input id="base_url" v-model="form.base_url" type="url"
-                        placeholder="https://sandbox.gateway.example.com" required />
+                        placeholder="https://sandbox.gateway.example.com"
+                        :class="{ 'is-invalid': fieldErrors.base_url }" />
+                    <span v-if="fieldErrors.base_url" class="field-error">{{ fieldErrors.base_url }}</span>
                 </div>
 
                 <div class="panel-actions">
-                    <button type="submit" class="submit-btn" :disabled="saving">
+                    <button type="submit" class="submit-btn" data-tour="gateway-save" :disabled="saving">
                         {{ saving ? "Saving…" : "Save settings" }}
                     </button>
                 </div>
             </form>
-        </main>
-    </div>
+        </div>
+    </AdminShell>
 </template>
 
 <style scoped>
-.page {
+.settings-card {
     --ink: #1b2430;
     --slate: #5b6570;
     --paper: #fafaf8;
@@ -161,41 +241,13 @@ async function save() {
     --success: #1f9d55;
     --failed: #c9432c;
 
-    min-height: 100vh;
-    background: var(--paper);
+    max-width: 560px;
+    background: white;
+    border: 1px solid #e4e1d8;
+    border-radius: 12px;
+    padding: 28px;
     color: var(--ink);
     font-family: "Inter", system-ui, sans-serif;
-}
-
-.topbar {
-    padding: 20px 40px;
-    border-bottom: 1px solid var(--hairline);
-}
-
-.back-btn {
-    background: transparent;
-    border: none;
-    color: var(--slate);
-    font-size: 13px;
-    cursor: pointer;
-    padding: 0;
-}
-
-.back-btn:hover {
-    color: var(--ink);
-}
-
-.content {
-    max-width: 1000px;
-    margin: 0 auto;
-    padding: 40px;
-}
-
-.page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 24px;
 }
 
 .eyebrow {
@@ -414,6 +466,22 @@ input:focus {
     outline: 2px solid var(--signal);
     outline-offset: 1px;
     border-color: var(--signal);
+}
+
+input.is-invalid {
+    border-color: var(--failed);
+}
+
+input.is-invalid:focus {
+    outline-color: var(--failed);
+    border-color: var(--failed);
+}
+
+.field-error {
+    display: block;
+    font-size: 12px;
+    color: var(--failed);
+    margin-top: 5px;
 }
 
 .link-btn {

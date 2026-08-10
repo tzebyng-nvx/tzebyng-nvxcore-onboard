@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useTour } from "@/composables/useTour";
 import { Head, router } from "@inertiajs/vue3";
 import { onMounted, ref } from "vue";
 
@@ -135,6 +136,37 @@ function formatDate(iso: string): string {
   });
 }
 
+const { start: startTour } = useTour("player-dashboard", [
+    {
+        element: ".sidebar .nav",
+        popover: {
+            title: "Your wallet menu",
+            description: "Move between your Overview, Deposit, Withdraw and Transactions here.",
+        },
+    },
+    {
+        element: '[data-tour="balance"]',
+        popover: {
+            title: "Your balance",
+            description: "This is your available wallet balance.",
+        },
+    },
+    {
+        element: '[data-tour="quick-actions"]',
+        popover: {
+            title: "Quick actions",
+            description: "Add funds or withdraw straight from your dashboard.",
+        },
+    },
+    {
+        element: '[data-tour="recent"]',
+        popover: {
+            title: "Recent activity",
+            description: "Your most recent transactions. Open Transactions for the full history.",
+        },
+    },
+]);
+
 onMounted(loadDashboard);
 </script>
 
@@ -178,15 +210,20 @@ onMounted(loadDashboard);
           <span class="eyebrow muted">Wallet</span>
           <h1>Overview</h1>
         </div>
-        <button class="refresh-btn" :disabled="loading" @click="loadDashboard">
-          <span class="nav-icon">↻</span>
-          {{ loading ? "Refreshing…" : "Refresh" }}
-        </button>
+        <div class="header-actions">
+          <button class="refresh-btn" title="Take a guided tour of this page" @click="startTour">
+            <span class="nav-icon">?</span> Tour
+          </button>
+          <button class="refresh-btn" :disabled="loading" @click="loadDashboard">
+            <span class="nav-icon">↻</span>
+            {{ loading ? "Refreshing…" : "Refresh" }}
+          </button>
+        </div>
       </header>
 
       <div class="grid">
         <!-- Balance hero -->
-        <section class="balance-card">
+        <section class="balance-card" data-tour="balance">
           <div class="balance-top">
             <div v-if="profile" class="profile">
               <span class="profile-avatar">{{ profile.name.charAt(0).toUpperCase() }}</span>
@@ -209,7 +246,7 @@ onMounted(loadDashboard);
               <div v-else class="balance-amount is-error">Unavailable</div>
             </div>
 
-            <div class="actions">
+            <div class="actions" data-tour="quick-actions">
               <button class="action-btn is-primary" @click="router.visit('/deposit')">
                 <span class="nav-icon">↓</span> Deposit
               </button>
@@ -256,7 +293,7 @@ onMounted(loadDashboard);
       </div>
 
       <!-- Recent transactions -->
-      <section class="transactions-card">
+      <section class="transactions-card" data-tour="recent">
         <div class="card-header">
           <div>
             <h2>Recent transactions</h2>
@@ -698,6 +735,12 @@ onMounted(loadDashboard);
 
 .card-sub {
   font-size: 12px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .refresh-btn {

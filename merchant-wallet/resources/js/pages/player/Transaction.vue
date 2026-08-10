@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import PlayerShell from "@/components/PlayerShell.vue";
+import Pagination from "@/components/Pagination.vue";
+import { DEFAULT_PAGE_SIZE } from "@/config/pagination";
+import { useTour } from "@/composables/useTour";
 import { Head, router } from "@inertiajs/vue3";
 import { onMounted, ref } from "vue";
 
@@ -13,14 +16,15 @@ interface Transaction {
     created_at: string;
 }
 
-interface Pagination {
+interface PageMeta {
     current_page: number;
     last_page: number;
+    per_page: number;
     total: number;
 }
 
 const transactions = ref<Transaction[]>([]);
-const pagination = ref<Pagination | null>(null);
+const pagination = ref<PageMeta | null>(null);
 
 const loading = ref(true);
 const loadError = ref<string | null>(null);
@@ -29,6 +33,7 @@ const filters = ref({
     type: "",
     status: "",
     page: 1,
+    per_page: DEFAULT_PAGE_SIZE,
 });
 
 function authHeaders(): HeadersInit {
@@ -58,6 +63,7 @@ async function loadTransactions() {
         const params = new URLSearchParams();
 
         params.append("page", String(filters.value.page));
+        params.append("per_page", String(filters.value.per_page));
 
         if (filters.value.type) {
             params.append("type", filters.value.type);
@@ -90,6 +96,7 @@ async function loadTransactions() {
         pagination.value = {
             current_page: data.current_page,
             last_page: data.last_page,
+            per_page: data.per_page,
             total: data.total,
         };
     } catch {
@@ -115,10 +122,33 @@ function changePage(page: number) {
     loadTransactions();
 }
 
+function changePerPage(perPage: number) {
+    filters.value.per_page = perPage;
+    filters.value.page = 1;
+    loadTransactions();
+}
+
 function applyFilter() {
     filters.value.page = 1;
     loadTransactions();
 }
+
+useTour("player-transaction", [
+    {
+        element: '[data-tour="txn-filters"]',
+        popover: {
+            title: "Filter your history",
+            description: "Filter your transactions by type and status.",
+        },
+    },
+    {
+        element: '[data-tour="txn-list"]',
+        popover: {
+            title: "Your transactions",
+            description: "A full record of your deposits and withdrawals.",
+        },
+    },
+]);
 
 onMounted(() => {
     loadTransactions();
@@ -137,7 +167,7 @@ onMounted(() => {
         </template>
 
         <section class="card">
-            <div class="toolbar">
+            <div class="toolbar" data-tour="txn-filters">
                 <div class="filter-group">
                     <span class="filter-label">Type</span>
                     <select v-model="filters.type" @change="applyFilter">
@@ -164,10 +194,11 @@ onMounted(() => {
 
             <p v-if="loadError" class="error">{{ loadError }}</p>
 
-            <div v-else-if="!loading && transactions.length" class="table-wrap">
+            <div v-else-if="!loading && transactions.length" class="table-wrap" data-tour="txn-list">
                 <table class="txn-table">
                     <thead>
                         <tr>
+                            <th class="num">#</th>
                             <th>Reference</th>
                             <th>Type</th>
                             <th class="right">Amount</th>
@@ -177,7 +208,10 @@ onMounted(() => {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="txn in transactions" :key="txn.id">
+                        <tr v-for="(txn, i) in transactions" :key="txn.id">
+                            <td class="mono muted num">
+                                {{ ((pagination?.current_page ?? 1) - 1) * (pagination?.per_page ?? DEFAULT_PAGE_SIZE) + i + 1 }}
+                            </td>
                             <td class="mono muted ref-cell">{{ txn.id }}</td>
                             <td>
                                 <span class="type-chip" :class="txn.type === 'deposit' ? 'is-credit' : 'is-debit'">
@@ -204,19 +238,10 @@ onMounted(() => {
 
             <p v-else class="loading-state">Loading transactions…</p>
 
-            <div v-if="pagination && pagination.last_page > 1" class="pagination">
-                <button class="page-btn" :disabled="pagination.current_page === 1"
-                    @click="changePage(pagination.current_page - 1)">
-                    ← Previous
-                </button>
-                <span class="page-info muted">
-                    Page {{ pagination.current_page }} / {{ pagination.last_page }}
-                </span>
-                <button class="page-btn" :disabled="pagination.current_page === pagination.last_page"
-                    @click="changePage(pagination.current_page + 1)">
-                    Next →
-                </button>
-            </div>
+            <Pagination v-if="pagination" :current-page="pagination.current_page"
+                :last-page="pagination.last_page" :total="pagination.total"
+                :per-page="pagination.per_page" @change="changePage"
+                @per-page-change="changePerPage" />
         </section>
     </PlayerShell>
 </template>
@@ -353,6 +378,13 @@ select:focus {
 
 .right {
     text-align: right;
+}
+
+.num {
+    width: 1%;
+    white-space: nowrap;
+    text-align: right;
+    padding-right: 16px;
 }
 
 .ref-cell {
